@@ -1,0 +1,90 @@
+{
+  "streamer": {
+    "name": "zackrawrr",
+    "id": 12345678
+  },
+  "comments": [
+    {
+      "_id": "c101",
+      "created_at": "2026-09-27T01:00:00Z",
+      "content_offset_seconds": 1.2,
+      "commenter": {
+        "_id": "9001",
+        "display_name": "Gamer123"
+      },
+      "message": {
+        "body": "pepeJAM chill stream",
+        "fragments": [
+          { "text": "pepeJAM" },
+          { "text": " chill stream" }
+        ]
+      }
+    },
+    {
+      "_id": "c102",
+      "created_at": "2026-09-27T01:00:05Z",
+      "content_offset_seconds": 5.4,
+      "commenter": {
+        "_id": "9002",
+        "display_name": "LootGoblin"
+      },
+      "message": {
+        "body": "what game is this?",
+        "fragments": [
+          { "text": "what game is this?" }
+        ]
+      }
+    },
+    {
+      "_id": "c103",
+      "created_at": "2026-09-27T01:00:19Z",
+      "content_offset_seconds": 19.1,
+      "commenter": {
+        "_id": "9003",
+        "display_name": "TrueBeliever"
+      },
+      "message": {
+        "body": "OMEGALUL HE PAUSED",
+        "fragments": [
+          { "text": "OMEGALUL", "emoticon_id": "128054" },
+          { "text": " HE PAUSED" }
+        ]
+      }
+    },
+    {
+      "_id": "c104",
+      "created_at": "2026-09-27T01:00:19Z",
+      "content_offset_seconds": 19.5,
+      "commenter": {
+        "_id": "9004",
+        "display_name": "PogChampEnjoyer"
+      },
+      "message": {
+        "body": "COOKED OMEGALUL",
+        "fragments": [
+          { "text": "COOKED" },
+          { "text": " " },
+          { "text": "OMEGALUL", "emoticon_id": "128054" }
+        ]
+      }
+    },
+    {
+      "_id": "c105",
+      "created_at": "2026-09-27T01:00:20Z",
+      "content_offset_seconds": 20.0,
+      "commenter": {
+        "_id": "9005",
+        "display_name": "ChatMaster"
+      },
+      "message": {
+        "body": "TRUE LULW SO TRUE",
+        "fragments": [
+          { "text": "TRUE" },
+          { "text": " " },
+          { "text": "LULW" },
+          { "text": " SO TRUE" }
+        ]
+      }
+    }
+  ]
+}
