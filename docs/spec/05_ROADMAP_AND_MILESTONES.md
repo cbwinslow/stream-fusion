@@ -6,22 +6,29 @@
 gantt
     title StreamFusion Development Milestones
     dateFormat YYYY-MM-DD
-    section Phase 1: Core
+    section Phase 1: Core Grounding [COMPLETED]
     M1: Specs, Contracts & Demo CLI            :done, m1, 2026-09-27, 2026-09-27
-    M2: Ingest & Real Chat Replay Connector    :active, m2, 2026-09-28, 2026-10-02
-    section Phase 2: AI Engines
-    M3: WhisperX Audio & Diarization Engine    :m3, 2026-10-03, 2026-10-08
-    M4: Florence-2 Vision & OCR Engine         :m4, 2026-10-09, 2026-10-14
-    section Phase 3: Alignment & Output
-    M5: Dynamic Latency Calibration & Matrix   :m5, 2026-10-15, 2026-10-19
-    M6: Interactive Dashboard & Highlight Cut  :m6, 2026-10-20, 2026-10-25
-    section Phase 4: Release
-    M7: PyPI Packaging & Community Release     :m7, 2026-10-26, 2026-10-31
+    M2: Ingest & Real Chat Replay Connector    :done, m2, 2026-09-27, 2026-09-27
+    M3: Whisper Audio & Diarization Engine     :done, m3, 2026-09-27, 2026-09-27
+    M4: Florence-2 Vision & OCR Engine         :done, m4, 2026-09-27, 2026-09-27
+    M5: Dynamic Latency Drift Calibration      :done, m5, 2026-09-27, 2026-09-27
+    M6: Interactive HTML & 9:16 Shorts Cut     :done, m6, 2026-09-27, 2026-09-27
+    section Phase 2: Intelligence & Resumption [COMPLETED]
+    Spec 08: Chat NLP & Meme Bursts            :done, s8, 2026-09-27, 2026-09-27
+    Spec 09: Sponsor & Brand Quantifier        :done, s9, 2026-09-27, 2026-09-27
+    Spec 10: Stateful Resumption & VOD Bench   :done, s10, 2026-09-27, 2026-09-27
+    section Phase 3: Biometrics & Deep Vision [UPCOMING]
+    M7: Voiceprint & Co-Stream Diarization (Spec 11)   :active, m7, 2026-09-28, 2026-10-02
+    M8: Dense Frame OCR & Web Grounding (Spec 14)      :m8, 2026-10-03, 2026-10-07
+    section Phase 4: Community & Knowledge [UPCOMING]
+    M9: Chatter Profiling & Griefer Safety (Spec 12)   :m9, 2026-10-08, 2026-10-12
+    M10: Streamer Knowledge Graph & Vector DB (Spec 13):m10, 2026-10-13, 2026-10-18
 ```
 
 ---
 
 ## Detailed Milestone Deliverables & Acceptance Criteria
+
 
 ### Milestone 1: Architecture, Data Contracts & Functional Demo [COMPLETED]
 * **Deliverables:**

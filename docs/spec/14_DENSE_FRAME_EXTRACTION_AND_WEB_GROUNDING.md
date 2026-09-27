@@ -70,11 +70,11 @@ Let $T_{\text{screen}} = [t_1, t_2, \dots, t_M]$ be the OCR text tokens detected
 The **Read-Along Alignment Score** is:
 $$\text{ReadAlongAlignment}(B_{\text{post}}) = \frac{|W_{\text{speech}} \cap T_{\text{screen}}|}{|W_{\text{speech}}|}$$
 
-* If $\text{ReadAlongAlignment} \ge 0.60$:
-  * Mark the segment: `is_reading_along = True`.
-  * Associate the audio transcript directly to the bounding box $B_{\text{post}}$ and author handle `@username`.
-  * Calculate reading speed:
-    $$\text{WPM} = \frac{|W_{\text{speech}}|}{(t_b - t_a) / 60}$$
+### 3.2 Sub-Window ROI Scaling Normalization
+Streamers rarely display web pages across 100% of the canvas; they commonly position browser windows at 50%–70% scale with their facecam and chat sidebar occupying remaining quadrants. Running full-frame OCR directly on downscaled text causes character recognition degradation.
+1. **Window Boundary Localizer**: Detects browser window bounding box $[y_1, x_1, y_2, x_2]$ using Florence-2 `<OD>` (`window`, `display_screen`).
+2. **Crop & Super-Resolution Crop Rescaling**: Crops the region of interest (ROI) and applies bicubic upscaling ($2\times$) if character height $< 14\text{ px}$.
+3. **Card-Level Text Segmentation**: Distinguishes tweet author handle (`@handle`) from post body, preventing noisy author names from blending into sentence semantics.
 
 ---
 

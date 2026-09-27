@@ -40,6 +40,12 @@ When a new high-confidence sample $\vec{v}_{\text{new}}$ is verified for creator
 $$\vec{\mu}_{\text{new}} = \frac{N \cdot \vec{\mu}_{\text{old}} + \vec{v}_{\text{new}}}{N + 1}, \quad \vec{\mu}_{\text{normalized}} = \frac{\vec{\mu}_{\text{new}}}{\|\vec{\mu}_{\text{new}}\|_2}$$
 where $N$ is the historical sample count.
 
+### 2.4 Streaming Audio Pre-Processing & Discord Noise Gate
+Live streams feature loud in-game combat sound effects, background music, Discord Opus compression (24–64 kbps), and streamer microphone peaking. Feeding contaminated audio directly into embedding extractors corrupts centroids.
+1. **Signal-to-Noise Ratio (SNR) Gate**: Audio segments are pre-filtered using a speech energy envelope. Segments with $\text{SNR} < 12\text{ dB}$ (e.g., heavy gunfire or loud background tracks) are excluded from centroid enrollment.
+2. **Microphone Clipping & Scream Filter**: Saturated waveforms ($> -0.1\text{ dBFS}$ continuous clipping) are downweighted or split at zero-crossings.
+3. **Discord Opus Artifact Invariance**: The embedding extractor applies spectral bandpass normalization ($300\text{ Hz} - 3400\text{ Hz}$) to align raw mic feeds with VoIP-compressed co-streamer voices.
+
 ---
 
 ## 3. Cross-Stream Matching & Co-Stream Attribution Algorithm

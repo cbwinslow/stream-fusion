@@ -98,4 +98,27 @@ class FusionSlice(BaseModel):
     # Derived Signals
     is_spike_moment: bool = False
     agreement_score: Optional[float] = None  # Measure of chat agreeing with streamer statement
+
+    # Advanced Multi-Modal Fields (Specs 08 - 14)
+    speaker_identities: List[str] = Field(default_factory=list, description="Resolved creator IDs, e.g. ['STREAMER:theburntpeanut', 'CO_STREAMER:hutchmf']")
+    chat_intents: Dict[str, float] = Field(default_factory=dict, description="Fine-grained emotion intents from Spec 08")
+    active_sponsor_brand: Optional[str] = Field(None, description="Active sponsor detected in this window (Spec 09)")
+    griefer_messages_flagged: int = Field(default=0, description="Count of bad-faith contrarian/griefer messages (Spec 12)")
+    active_domain: Optional[str] = Field(None, description="Active web domain being browsed, e.g. 'x.com' (Spec 14)")
+    read_along_text: Optional[str] = Field(None, description="On-screen text being read aloud by streamer (Spec 14)")
 ```
+
+---
+
+## 5. Master Contract Matrix (Specs 08–14)
+
+| Domain | Specification | Primary Schemas | Core Responsibility |
+|---|---|---|---|
+| **Chat Intelligence** | Spec 08 | `ChatIntentDistribution`, `MemeBurstEvent`, `ChatterProfile` | Culture-aware intents, sliding Jaccard meme bursts, opinion leaders |
+| **Sponsorship** | Spec 09 | `BrandProfile`, `SponsorSegment`, `SponsorImpactReport` | Audio + OCR brand matching, backlash index, Attention Score |
+| **Resumption** | Spec 10 | `ChunkManifest` | Atomic slice caching, zero-redundant-compute resumption |
+| **Voice Biometrics** | Spec 11 | `VoiceprintProfile`, `CoStreamInteraction`, `SpeakerMatchResult` | 192-d/512-d creator d-vectors, cross-channel co-streamer matching |
+| **Chat Safety** | Spec 12 | `ChatterDetailedProfile`, `ChatterSafetyVerdict`, `BrigadeCluster` | Historical profiling, banter vs. griefing disambiguation, brigade alerts |
+| **Knowledge Graph**| Spec 13 | `StreamerClaim`, `EntityStanceRecord`, `ClaimRevision` | Additive belief synthesis, ChromaDB/Qdrant vector index, VOD query |
+| **Dense Vision** | Spec 14 | `ScreenWebContext`, `ScreenGameContext`, `ReadAlongSegment` | 1.0s dense frame parsing, X/Twitter cards, HUD extraction, read-along sync |
+

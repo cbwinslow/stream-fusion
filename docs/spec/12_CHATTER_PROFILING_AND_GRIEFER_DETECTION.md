@@ -50,6 +50,18 @@ $$R_{\text{banter}}(u) = \frac{\text{Count}(m \in \text{MemeBursts}) + \text{Cou
 ### 3.5 Griefer Probability ($P_{\text{griefer}}$)
 $$P_{\text{griefer}}(u) = \sigma\left(w_1 \cdot C_{\text{contrarian}} + w_2 \cdot H(u) - w_3 \cdot R_{\text{banter}} - w_4 \cdot \log(1 + \text{TenureDays})\right)$$
 
+### 3.6 Automated Bot & System Account Exclusion
+Automated channel bots frequently output high-frequency command responses (`!uptime`, `!discord`, `!specs`, `!merch`) and automated timer notifications.
+* **Whitelisted Bot Registry**: `nightbot`, `streamelements`, `moobot`, `fossabot`, `soundalerts`, `wizebot`.
+* **Automated Heuristic**: Any account sending $> 90\%$ messages starting with `!` or matching regex `^(Welcome to the stream|Follow the channel|Join the discord)` is assigned `is_automated_bot = True` and excluded from chatter moderation profiling.
+
+### 3.7 Coordinated Brigade Temporal Clustering
+Coordinated hate raids and political brigades involve accounts entering chat within a narrow time window $\tau_{\text{arrival}} \le 120\text{s}$ exhibiting:
+1. High token Jaccard similarity ($\ge 0.70$) on hostile talking points.
+2. Zero prior message history on the channel (`TenureDays == 0`).
+3. Clustered activation during controversial monologue moments.
+When $\ge 5$ such accounts fire simultaneously, the system emits a `BRIGADE_ALERT` payload linking all associated `user_id`s.
+
 ---
 
 ## 4. Historical Chatter Store Schema (Postgres / SQLite)

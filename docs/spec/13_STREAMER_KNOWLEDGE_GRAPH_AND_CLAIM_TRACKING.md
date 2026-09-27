@@ -38,17 +38,31 @@ Streamers produce hundreds of hours of unscripted commentary monthly, expressing
   "polarity": -0.75,
   "confidence": 0.91,
   "raw_quote": "The CGI on that monster looks completely cooked, it's not good.",
-  "visual_context_summary": "Streamer watching official movie trailer on YouTube"
+  "visual_context_summary": "Streamer watching official movie trailer on YouTube",
+  "supersedes_claim_id": null,
+  "is_stance_reversal": false
 }
 ```
 
-### 2.2 Additive Temporal Synthesis Engine
+### 2.2 Additive Temporal Synthesis & Revision Graph
 When multiple claims touch the same `(creator_id, subject_entity)` over time:
 1. **Stance Aggregation Matrix**:
    $$S_{\text{aggregate}}(\text{Entity}) = \sum_{i=1}^M w(t_i) \cdot \text{Polarity}_i$$
    where $w(t_i) = e^{-\lambda (t_{\text{now}} - t_i)}$ is an optional temporal recency decay.
 2. **Sub-Attribute Disambiguation**: Claims targeting specific sub-attributes (`special_effects`, `story`, `pacing`, `soundtrack`) do not overwrite the overarching entity verdict (`overall_movie`); they enrich the entity's hierarchical property graph.
-3. **Contradiction & Flip-Flop Detection**: Flags when a creator reverses an overall stance on the same sub-attribute (e.g. from `POSITIVE` to `NEGATIVE` within 30 days), recording the before-and-after timestamps for analysis.
+3. **Contradiction & Flip-Flop Detection**: Flags when a creator reverses an overall stance on the same sub-attribute (e.g. from `POSITIVE` to `NEGATIVE` within 30 days). The newer claim explicitly references `supersedes_claim_id`, creating an audit trail of opinion shifts:
+   ```json
+   {
+     "claim_id": "claim_09102",
+     "subject_entity": "Godzilla Minus One",
+     "predicate": "overall_verdict",
+     "stance": "APPROVAL",
+     "polarity": +0.80,
+     "supersedes_claim_id": null,
+     "is_stance_reversal": false,
+     "synthesized_note": "Complementary to claim_08492: liked film overall, held negative view on CGI"
+   }
+   ```
 
 ---
 
