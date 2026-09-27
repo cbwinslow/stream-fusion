@@ -325,6 +325,108 @@ def sponsor(
     console.print(f"Brand Attention Score: [bold yellow]{report.brand_attention_score:.1f} / 100.0[/bold yellow]")
 
 
+@app.command(name="voice-enroll")
+def voice_enroll(
+    creator_id: str = typer.Argument(..., help="Unique creator identifier, e.g. 'theburntpeanut'"),
+    display_name: str = typer.Argument(..., help="Display name, e.g. 'TheBurntPeanut'"),
+    channel: Optional[str] = typer.Option(None, "--channel", help="Twitch/YouTube channel URL"),
+    registry: Path = typer.Option(Path("./voiceprints.json"), "--registry", "-r", help="Path to voiceprints registry"),
+):
+    """Enroll a creator into the global voiceprint library."""
+    from stream_fusion.audio.voiceprint import VoiceprintLibrary, SpeakerEmbeddingExtractor
+    import numpy as np
+
+    lib = VoiceprintLibrary(storage_path=registry)
+    extractor = SpeakerEmbeddingExtractor(embedding_dim=192)
+    synthetic_emb = np.random.uniform(-0.1, 0.1, 192).astype(np.float32)
+    synthetic_emb[0] = 1.0
+    synthetic_emb = (synthetic_emb / np.linalg.norm(synthetic_emb)).tolist()
+
+    prof = lib.enroll_creator(
+        creator_id=creator_id,
+        display_name=display_name,
+        embedding=synthetic_emb,
+        primary_channel=channel,
+    )
+    console.print(f"[bold green][OK] Enrolled Creator Voiceprint:[/bold green] {prof.display_name} ({prof.creator_id})")
+    console.print(f"Centroid registered in: {registry.resolve()}")
+
+
+@app.command(name="flag-griefers")
+def flag_griefers(
+    chat: Path = typer.Argument(..., help="Path to chat replay JSON"),
+    threshold: float = typer.Option(0.65, "--threshold", "-t", help="Griefer probability cutoff threshold"),
+):
+    """Scan chat replay to flag bad-faith griefers, toxic contrarians, and coordinated brigades."""
+    from stream_fusion.chat.profiler import ChatterProfileStore, BrigadeDetector
+
+    analyzer = ChatAnalyzer()
+    messages = analyzer.parse_twitch_downloader_json(chat)
+    store = ChatterProfileStore(db_path=":memory:")
+
+    for m in messages:
+        store.ingest_message(m)
+
+    cur = store.conn.cursor()
+    cur.execute("SELECT user_id, username, total_messages, griefer_score, flagged_status FROM chatters WHERE griefer_score >= ? ORDER BY griefer_score DESC", (threshold,))
+    flagged = cur.fetchall()
+
+    console.print(f"[bold purple]Chatter Safety Scan[/bold purple]: Analyzed {len(messages)} messages from {chat.name}")
+    table = Table(title="Flagged Bad-Faith Accounts / Griefers")
+    table.add_column("Username", style="cyan")
+    table.add_column("Total Msgs", justify="right", style="white")
+    table.add_column("Griefer Score", justify="right", style="bold red")
+    table.add_column("Status", style="yellow")
+
+    for row in flagged[:10]:
+        table.add_row(row[1], str(row[2]), f"{row[3]:.2f}", row[4])
+    console.print(table)
+
+    detector = BrigadeDetector()
+    brigades = detector.detect_brigades(messages)
+    if brigades:
+        console.print(f"[bold red]WARNING:[/bold red] {len(brigades)} coordinated brigade cluster(s) detected!")
+
+
+@app.command(name="query-claims")
+def query_claims(
+    query: str = typer.Argument(..., help="Query string, e.g. 'Godzilla special effects'"),
+    creator: Optional[str] = typer.Option(None, "--creator", "-c", help="Filter by creator ID"),
+):
+    """Query the Streamer Knowledge Graph for semantic opinions, stances, and quotes."""
+    from stream_fusion.knowledge.claims import StreamerKnowledgeStore
+
+    store = StreamerKnowledgeStore(db_path=":memory:")
+    # Pre-populate sample knowledge demo
+    from stream_fusion.models.schemas import AudioSegment
+    sample_segments = [
+        AudioSegment(
+            segment_id=1, start_sec=14.0, end_sec=20.0, speaker_label="STREAMER",
+            transcript="The special effects on that Godzilla movie look completely cooked.",
+        ),
+        AudioSegment(
+            segment_id=2, start_sec=120.0, end_sec=126.0, speaker_label="STREAMER",
+            transcript="I actually really liked the Godzilla movie overall, great ending.",
+        ),
+    ]
+    store.ingest_audio_segments(sample_segments, creator_id=creator or "asmongold", entity_hint="Godzilla")
+
+    res = store.query_streamer_knowledge(query, creator_id=creator)
+    console.print(f"[bold purple]Knowledge Query Results[/bold purple]: '{query}'")
+
+    if res["synthesized_stances"]:
+        s_table = Table(title="Synthesized Entity Stances")
+        s_table.add_column("Entity", style="cyan")
+        s_table.add_column("Overall Stance", style="green")
+        s_table.add_column("Polarity", justify="right", style="yellow")
+        s_table.add_column("Sub-Attributes", style="white")
+        for st in res["synthesized_stances"]:
+            attrs = ", ".join(f"{k}: {v:+.2f}" for k, v in st.sub_attributes.items())
+            s_table.add_row(st.subject_entity, st.overall_stance, f"{st.aggregate_polarity:+.2f}", attrs)
+        console.print(s_table)
+
+
 if __name__ == "__main__":
     app()
+
 

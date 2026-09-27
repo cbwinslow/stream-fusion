@@ -87,6 +87,14 @@ class FusionSlice(BaseModel):
     is_spike_moment: bool = False
     agreement_score: Optional[float] = None
 
+    # Extended Signals (Specs 11 - 14)
+    speaker_identities: List[str] = Field(default_factory=list, description="Resolved creator IDs, e.g. ['STREAMER:theburntpeanut', 'CO_STREAMER:hutchmf']")
+    chat_intents: Dict[str, float] = Field(default_factory=dict, description="Fine-grained emotion intents from Spec 08")
+    active_sponsor_brand: Optional[str] = Field(None, description="Active sponsor detected in this window (Spec 09)")
+    griefer_messages_flagged: int = Field(default=0, description="Count of bad-faith contrarian/griefer messages (Spec 12)")
+    active_domain: Optional[str] = Field(None, description="Active web domain being browsed, e.g. 'x.com' (Spec 14)")
+    read_along_text: Optional[str] = Field(None, description="On-screen text being read aloud by streamer (Spec 14)")
+
 
 class StreamAnalysisResult(BaseModel):
     stream_id: str
@@ -173,4 +181,140 @@ class ChunkManifest(BaseModel):
     status: str = "IN_PROGRESS"
     last_updated: str = ""
     chunk_files: Dict[str, List[str]] = Field(default_factory=dict)
+
+
+# --- Spec 11: Speaker Voiceprint & Co-Stream Network ---
+
+class VoiceprintProfile(BaseModel):
+    creator_id: str
+    display_name: str
+    primary_channel: Optional[str] = None
+    centroid_embedding: List[float] = Field(..., description="Normalized speaker d-vector")
+    sample_count: int = 1
+    confidence_threshold: float = 0.76
+    last_updated: str = ""
+
+
+class SpeakerMatchResult(BaseModel):
+    assigned_label: str  # e.g. "STREAMER:theburntpeanut" or "CO_STREAMER:hutchmf"
+    creator_id: Optional[str] = None
+    confidence: float = 0.0
+    is_known_creator: bool = False
+
+
+class CoStreamInteraction(BaseModel):
+    host_creator: str
+    guest_creator: str
+    vod_id: str
+    interaction_start_sec: float
+    interaction_end_sec: float
+    total_spoken_duration_sec: float
+    game_or_activity: str = "UNKNOWN"
+    timestamp: str = ""
+
+
+# --- Spec 12: Chatter Profiling & Safety ---
+
+class ChatterDetailedProfile(BaseModel):
+    user_id: str
+    username: str
+    first_seen_at: str
+    last_seen_at: str
+    total_messages: int = 0
+    contrarian_index: float = 0.0
+    hostility_index: float = 0.0
+    banter_reciprocity: float = 0.0
+    griefer_score: float = 0.0
+    flagged_status: str = "CLEAN"  # "CLEAN", "WATCHLIST", "GRIEFER", "BRIGADE"
+    is_automated_bot: bool = False
+
+
+class ChatterSafetyVerdict(BaseModel):
+    message_id: str
+    user_id: str
+    verdict: str  # "GOOD_NATURED_BANTER", "COMMUNITY_ROAST", "BAD_FAITH_GRIEFING", "MALICIOUS_HARASSMENT"
+    confidence: float
+    reason: str
+
+
+class BrigadeCluster(BaseModel):
+    cluster_id: str
+    window_start_sec: float
+    window_end_sec: float
+    participant_user_ids: List[str]
+    similarity_score: float
+    flagged_phrase: str
+
+
+# --- Spec 13: Streamer Knowledge Graph & Claims ---
+
+class StreamerClaim(BaseModel):
+    claim_id: str
+    creator_id: str
+    vod_id: str
+    timestamp_sec: float
+    end_sec: float
+    topic_category: str = "GENERAL"
+    subject_entity: str
+    predicate: str
+    object_value: str
+    stance: str  # "APPROVAL", "DISAPPROVAL", "NEUTRAL"
+    polarity: float = 0.0  # -1.0 to +1.0
+    confidence: float = 1.0
+    raw_quote: str
+    visual_context_summary: str = ""
+    supersedes_claim_id: Optional[str] = None
+    is_stance_reversal: bool = False
+
+
+class EntityStanceRecord(BaseModel):
+    creator_id: str
+    subject_entity: str
+    aggregate_polarity: float
+    overall_stance: str
+    claims_count: int
+    sub_attributes: Dict[str, float] = Field(default_factory=dict)
+    last_updated: str = ""
+
+
+# --- Spec 14: Dense Frame Extraction & Web Grounding ---
+
+class SocialPostCard(BaseModel):
+    platform: str = "X_TWITTER"
+    author_handle: str
+    author_name: str
+    post_text: str
+    bounding_box: List[float] = Field(default_factory=list)  # [ymin, xmin, ymax, xmax]
+    has_embedded_media: bool = False
+
+
+class ScreenWebContext(BaseModel):
+    timestamp_sec: float
+    browser_detected: bool = False
+    detected_url: Optional[str] = None
+    domain: Optional[str] = None
+    active_tab_title: Optional[str] = None
+    social_post_cards: List[SocialPostCard] = Field(default_factory=list)
+    article_headlines: List[str] = Field(default_factory=list)
+
+
+class ScreenGameContext(BaseModel):
+    timestamp_sec: float
+    game_title_hint: Optional[str] = None
+    minimap_box: Optional[List[float]] = None
+    health_percentage: Optional[float] = None
+    mana_percentage: Optional[float] = None
+    killfeed_entries: List[str] = Field(default_factory=list)
+    inventory_open: bool = False
+
+
+class ReadAlongSegment(BaseModel):
+    start_sec: float
+    end_sec: float
+    spoken_text: str
+    matched_screen_text: str
+    alignment_score: float
+    reading_wpm: float
+    source_handle: Optional[str] = None
+
 

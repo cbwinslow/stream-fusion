@@ -43,6 +43,7 @@ sample_*
 *.webm
 *.parquet
 *.jsonl
+voiceprints.json
 *.pt
 *.bin
 *.onnx
