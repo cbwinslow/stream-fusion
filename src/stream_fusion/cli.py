@@ -1,6 +1,7 @@
 """StreamFusion Command Line Interface."""
 
 from pathlib import Path
+from typing import Optional
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -9,6 +10,8 @@ from stream_fusion.models.schemas import AudioSegment, VisualKeyframe, ChatMessa
 from stream_fusion.chat.analyzer import ChatAnalyzer
 from stream_fusion.fusion.matrix import FusionEngine
 from stream_fusion.export.html_report import export_html_report
+from stream_fusion.pipeline import StreamPipeline
+from stream_fusion.config import StreamFusionConfig
 
 app = typer.Typer(
     name="streamfusion",
@@ -19,16 +22,23 @@ console = Console()
 
 
 @app.command()
-def analyze(
-    url: str = typer.Argument(..., help="Twitch or YouTube VOD URL"),
-    duration: float = typer.Option(180.0, "--duration", "-d", help="Max duration in seconds"),
+def process(
+    video: Path = typer.Argument(..., help="Path to local VOD video file (mp4, mkv)"),
+    chat: Optional[Path] = typer.Option(None, "--chat", "-c", help="Path to Twitch/YouTube chat replay JSON"),
     output_dir: Path = typer.Option(Path("./output"), "--out", "-o", help="Output directory"),
+    duration: Optional[float] = typer.Option(None, "--duration", "-d", help="Limit analysis to N seconds"),
 ):
-    """Analyze a livestream VOD and aligned chat replay."""
-    console.print(f"[bold purple]StreamFusion Ingestion[/bold purple]: {url}")
-    console.print(f"Max segment duration: {duration}s -> Target: {output_dir}")
-    console.print("[yellow]Ingestion pipeline ready for full media demuxing.[/yellow]")
-
+    """Run full multimodal grounding on a video VOD and chat replay."""
+    console.print(f"[bold purple]StreamFusion Pipeline[/bold purple]: Processing {video.name}")
+    config = StreamFusionConfig()
+    pipeline = StreamPipeline(config=config)
+    result = pipeline.run(
+        media_input=video,
+        chat_input=chat,
+        output_dir=output_dir,
+        duration_sec=duration,
+    )
+    console.print(f"[bold green][OK] Analysis Complete for {result.stream_id}![/bold green]")
 
 
 @app.command()
@@ -98,9 +108,7 @@ def demo(
     ]
 
     # 3. Simulated Chat Replay with realistic latency
-    # Note: Streamer paused at 15s. Chat starts reacting around 19s (4s delay).
     raw_chat = []
-    # Baseline chat
     for s in range(0, 18):
         raw_chat.append(
             ChatMessage(
@@ -111,10 +119,8 @@ def demo(
                 content="pepeJAM nice music",
             )
         )
-    # Chat burst after the take (19s to 35s)
     react_emotes = ["OMEGALUL", "ICANT", "COOKED", "L", "Aware", "KEKW", "TRUE"]
     for s in range(19, 45):
-        # Spikes: 6 messages per second
         for sub in range(5):
             emote = react_emotes[(s + sub) % len(react_emotes)]
             raw_chat.append(
@@ -156,7 +162,7 @@ def demo(
     table.add_column("Chat Velocity", justify="right", style="magenta")
     table.add_column("Top Emote", style="green")
 
-    for s in result.slices[6:16]:  # Show around the pause moment
+    for s in result.slices[6:16]:
         top_emote = list(s.dominant_emotes.keys())[0] if s.dominant_emotes else "-"
         table.add_row(
             f"{s.start_sec:.1f} - {s.end_sec:.1f}",
