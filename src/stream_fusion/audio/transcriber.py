@@ -1,10 +1,26 @@
 """Speech-to-text transcription engine wrapping faster-whisper."""
 
 import gc
+import os
 from pathlib import Path
+import sys
 from typing import List, Optional
 
 from stream_fusion.models.schemas import AudioSegment, WordTiming
+
+
+def setup_cuda_dll_paths():
+    """Ensures CUDA DLLs (cublas, cudnn) shipped with PyTorch are found by CTranslate2 on Windows."""
+    if sys.platform == "win32":
+        try:
+            import torch
+            torch_lib = Path(torch.__file__).parent / "lib"
+            if torch_lib.exists():
+                if hasattr(os, "add_dll_directory"):
+                    os.add_dll_directory(str(torch_lib))
+                os.environ["PATH"] = str(torch_lib) + os.pathsep + os.environ.get("PATH", "")
+        except Exception:
+            pass
 
 
 class AudioTranscriber:
@@ -16,6 +32,7 @@ class AudioTranscriber:
         device: Optional[str] = None,
         compute_type: Optional[str] = None,
     ):
+        setup_cuda_dll_paths()
         self.model_size = model_size
 
         # Auto-configure device & compute type
@@ -57,15 +74,26 @@ class AudioTranscriber:
             raise FileNotFoundError(f"Audio file not found: {audio_path}")
 
         self._load_model()
-        segments_raw, info = self._model.transcribe(
-            str(audio_path),
-            language=language,
-            beam_size=beam_size,
-            word_timestamps=word_timestamps,
-        )
+        try:
+            segments_raw, info = self._model.transcribe(
+                str(audio_path),
+                language=language,
+                beam_size=beam_size,
+                word_timestamps=word_timestamps,
+            )
+            raw_list = list(segments_raw)
+        except (IndexError, RuntimeError):
+            # Fallback without word-level timestamp alignment on silent/music segments
+            segments_raw, info = self._model.transcribe(
+                str(audio_path),
+                language=language,
+                beam_size=beam_size,
+                word_timestamps=False,
+            )
+            raw_list = list(segments_raw)
 
         segments: List[AudioSegment] = []
-        for idx, seg in enumerate(segments_raw):
+        for idx, seg in enumerate(raw_list):
             words = []
             if seg.words:
                 for w in seg.words:
