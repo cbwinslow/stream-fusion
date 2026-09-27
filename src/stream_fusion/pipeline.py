@@ -17,6 +17,7 @@ from stream_fusion.fusion.matrix import FusionEngine
 from stream_fusion.export.html_report import export_html_report
 from stream_fusion.export.dataset import export_to_parquet, export_training_triples_jsonl
 from stream_fusion.export.clipper import VerticalHighlightClipper
+from stream_fusion.checkpoint.manager import CheckpointManager
 
 console = Console()
 
@@ -40,11 +41,19 @@ class StreamPipeline:
         duration_sec: Optional[float] = None,
         latency_offset: Optional[float] = None,
         auto_calibrate_latency: Optional[bool] = None,
+        cache_dir: Optional[Path] = None,
+        chunk_index: Optional[int] = None,
     ) -> StreamAnalysisResult:
         """Executes the complete phased sequential pipeline."""
         out_path = output_dir or self.config.storage.output_dir
         out_path.mkdir(parents=True, exist_ok=True)
         stream_id = media_input.stem
+        checkpoint_mgr = (
+            CheckpointManager(cache_dir=cache_dir, stream_id=stream_id)
+            if cache_dir
+            else None
+        )
+        c_idx = chunk_index if chunk_index is not None else 0
 
         # -------------------------------------------------------------
         # Phase 1: Ingestion & Demuxing
@@ -63,37 +72,51 @@ class StreamPipeline:
         # Phase 2: Speech Transcription & Reaction Diarization (GPU)
         # -------------------------------------------------------------
         console.print("[bold cyan][2/5][/bold cyan] Running Speech Transcription & Voice Diarization...")
-        transcriber = AudioTranscriber(
-            model_size=self.config.audio.whisper_model,
-            device=self.config.audio.device,
-            compute_type=self.config.audio.compute_type,
-        )
-        audio_segments = transcriber.transcribe(wav_path)
-        transcriber.unload()
+        cached_audio = checkpoint_mgr.load_chunk_audio(c_idx) if checkpoint_mgr else None
+        if cached_audio is not None:
+            audio_segments = cached_audio
+            console.print(f"      [green][RESUMED][/green] Loaded {len(audio_segments)} audio segments from checkpoint")
+        else:
+            transcriber = AudioTranscriber(
+                model_size=self.config.audio.whisper_model,
+                device=self.config.audio.device,
+                compute_type=self.config.audio.compute_type,
+            )
+            audio_segments = transcriber.transcribe(wav_path)
+            transcriber.unload()
 
-        diarizer = ReactionDiarizer(
-            hf_token=self.config.audio.hf_token, device=self.config.audio.device
-        )
-        audio_segments = diarizer.diarize_and_tag(audio_segments, wav_path)
-        diarizer.unload()
-        console.print(f"      [green][OK][/green] Processed {len(audio_segments)} diarized audio segments")
+            diarizer = ReactionDiarizer(
+                hf_token=self.config.audio.hf_token, device=self.config.audio.device
+            )
+            audio_segments = diarizer.diarize_and_tag(audio_segments, wav_path)
+            diarizer.unload()
+            if checkpoint_mgr:
+                checkpoint_mgr.save_chunk_audio(c_idx, audio_segments)
+            console.print(f"      [green][OK][/green] Processed {len(audio_segments)} diarized audio segments")
 
         # -------------------------------------------------------------
         # Phase 3: Vision & Screen OCR Processing (GPU)
         # -------------------------------------------------------------
         console.print("[bold cyan][3/5][/bold cyan] Analyzing screen context & OCR on keyframes...")
-        vision_processor = VisionProcessor(
-            backend="florence" if self.config.vision.device == "cuda" else "fallback",
-            device=self.config.vision.device,
-            detect_objects=self.config.vision.object_detection_enabled,
-        )
-        keyframes = []
-        for idx, f_path in enumerate(frames):
-            t_sec = idx * self.config.vision.sample_interval_sec
-            kf = vision_processor.process_frame(f_path, timestamp_sec=t_sec, frame_index=idx + 1)
-            keyframes.append(kf)
-        vision_processor.unload()
-        console.print(f"      [green][OK][/green] Parsed {len(keyframes)} visual scene keyframes")
+        cached_vision = checkpoint_mgr.load_chunk_vision(c_idx) if checkpoint_mgr else None
+        if cached_vision is not None:
+            keyframes = cached_vision
+            console.print(f"      [green][RESUMED][/green] Loaded {len(keyframes)} visual scene keyframes from checkpoint")
+        else:
+            vision_processor = VisionProcessor(
+                backend="florence" if self.config.vision.device == "cuda" else "fallback",
+                device=self.config.vision.device,
+                detect_objects=self.config.vision.object_detection_enabled,
+            )
+            keyframes = []
+            for idx, f_path in enumerate(frames):
+                t_sec = idx * self.config.vision.sample_interval_sec
+                kf = vision_processor.process_frame(f_path, timestamp_sec=t_sec, frame_index=idx + 1)
+                keyframes.append(kf)
+            vision_processor.unload()
+            if checkpoint_mgr:
+                checkpoint_mgr.save_chunk_vision(c_idx, keyframes)
+            console.print(f"      [green][OK][/green] Parsed {len(keyframes)} visual scene keyframes")
 
         # -------------------------------------------------------------
         # Phase 4: Chat Ingestion & Dynamic Latency Calibration
@@ -129,6 +152,8 @@ class StreamPipeline:
             stream_duration_sec=effective_duration,
             bucket_size_sec=self.config.chat.bucket_window_sec,
         )
+        if checkpoint_mgr:
+            checkpoint_mgr.save_chunk_chat(c_idx, chat_buckets)
 
         # -------------------------------------------------------------
         # Phase 5: Temporal Fusion Matrix & Highlight Detection
@@ -141,6 +166,10 @@ class StreamPipeline:
             visual_keyframes=keyframes,
             chat_buckets=chat_buckets,
         )
+
+        if checkpoint_mgr:
+            checkpoint_mgr.save_final_result(result)
+            checkpoint_mgr.mark_chunk_completed(c_idx)
 
         # Export HTML Dashboard
         html_output = out_path / f"{stream_id}_grounding_report.html"
@@ -207,27 +236,50 @@ class StreamPipeline:
         output_dir: Optional[Path] = None,
         total_duration_sec: Optional[float] = None,
         latency_offset: Optional[float] = None,
+        cache_dir: Optional[Path] = None,
     ) -> List[StreamAnalysisResult]:
         """Processes a long VOD stream in sequential chunks."""
         out_path = output_dir or self.config.storage.output_dir
         out_path.mkdir(parents=True, exist_ok=True)
+        stream_id = media_input.stem
         
         # Estimate duration if not provided
         est_duration = total_duration_sec or 3600.0
         num_chunks = max(1, int((est_duration + chunk_duration_sec - 1) // chunk_duration_sec))
         console.print(f"[bold cyan]Chunked Processing:[/bold cyan] {num_chunks} chunks of {chunk_duration_sec:.0f}s each")
 
+        checkpoint_mgr = (
+            CheckpointManager(
+                cache_dir=cache_dir,
+                stream_id=stream_id,
+                chunk_duration_sec=chunk_duration_sec,
+                total_chunks_expected=num_chunks,
+            )
+            if cache_dir
+            else None
+        )
+
         results = []
         for i in range(num_chunks):
             chunk_start = i * chunk_duration_sec
             chunk_out = out_path / f"chunk_{i:03d}"
             console.print(f"[bold yellow]Processing Chunk {i+1}/{num_chunks} [{chunk_start:.0f}s - {chunk_start+chunk_duration_sec:.0f}s][/bold yellow]")
+
+            if checkpoint_mgr and checkpoint_mgr.is_chunk_completed(i):
+                console.print(f"      [green][SKIP][/green] Chunk {i+1}/{num_chunks} already completed. Resuming...")
+                cached_res = checkpoint_mgr.load_final_result()
+                if cached_res:
+                    results.append(cached_res)
+                continue
+
             res = self.run(
                 media_input=media_input,
                 chat_input=chat_input,
                 output_dir=chunk_out,
                 duration_sec=chunk_duration_sec,
                 latency_offset=latency_offset,
+                cache_dir=cache_dir,
+                chunk_index=i,
             )
             results.append(res)
         return results

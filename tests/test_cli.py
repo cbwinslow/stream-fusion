@@ -40,3 +40,20 @@ def test_cli_demo_execution(tmp_path: Path):
     assert "StreamFusion Demonstration Mode" in result.output
     assert out_html.exists()
     assert out_html.stat().st_size > 500
+
+
+def test_cli_chat_nlp():
+    fixture_chat = Path(__file__).parent / "fixtures" / "sample_twitch_chat.json"
+    result = runner.invoke(app, ["chat-nlp", str(fixture_chat), "--min-authors", "2"])
+    assert result.exit_code == 0
+    assert "Chat NLP" in result.output
+    assert "Community Emotional Intent Distribution" in result.output
+
+
+def test_cli_sponsor():
+    fixture_chat = Path(__file__).parent / "fixtures" / "sample_twitch_chat.json"
+    result = runner.invoke(app, ["sponsor", "TestBrand", "--chat", str(fixture_chat), "--start", "0", "--end", "20"])
+    assert result.exit_code == 0
+    assert "Sponsor Impact Analysis" in result.output
+    assert "Brand Attention Score" in result.output
+

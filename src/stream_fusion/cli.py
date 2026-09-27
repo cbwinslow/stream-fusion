@@ -31,6 +31,7 @@ def process(
     latency_offset: Optional[float] = typer.Option(None, "--latency-offset", "-l", help="Manual broadcast delay offset in seconds"),
     auto_latency: bool = typer.Option(True, "--auto-latency/--no-auto-latency", help="Automatically calibrate broadcast latency via cross-correlation"),
     chunk_duration: Optional[float] = typer.Option(None, "--chunk-duration", help="Chunk duration in seconds for processing long streams in chunks"),
+    cache_dir: Optional[Path] = typer.Option(None, "--cache-dir", help="Directory for stateful resumption checkpoints"),
 ):
     """Run full multimodal grounding on a video VOD and chat replay."""
     console.print(f"[bold purple]StreamFusion Pipeline[/bold purple]: Processing {video.name}")
@@ -48,6 +49,7 @@ def process(
             output_dir=output_dir,
             total_duration_sec=duration,
             latency_offset=latency_offset,
+            cache_dir=cache_dir,
         )
         console.print(f"[bold green][OK] Chunked Analysis Complete: {len(results)} chunks processed![/bold green]")
     else:
@@ -58,6 +60,7 @@ def process(
             duration_sec=duration,
             latency_offset=latency_offset,
             auto_calibrate_latency=auto_latency,
+            cache_dir=cache_dir,
         )
         console.print(f"[bold green][OK] Analysis Complete for {result.stream_id}![/bold green]")
 
@@ -214,5 +217,114 @@ def demo(
     console.print(f"[bold green][OK] Interactive HTML report exported to:[/bold green] {output_html.resolve()}")
 
 
+@app.command(name="chat-nlp")
+def chat_nlp(
+    chat: Path = typer.Argument(..., help="Path to Twitch chat replay JSON"),
+    min_authors: int = typer.Option(5, "--min-authors", "-m", help="Minimum distinct authors for meme burst detection"),
+    window_sec: float = typer.Option(10.0, "--window-sec", "-w", help="Sliding window size in seconds"),
+):
+    """Analyze chat emotional intent, meme bursts, and chatter influence rankings."""
+    from stream_fusion.chat.nlp import ChatNLPAnalyzer, MemeBurstTracker, ChatterInfluenceScorer
+
+    analyzer = ChatAnalyzer()
+    messages = analyzer.parse_twitch_downloader_json(chat)
+    console.print(f"[bold purple]Chat NLP[/bold purple]: Parsed {len(messages)} messages from {chat.name}")
+
+    nlp_analyzer = ChatNLPAnalyzer()
+    classified = nlp_analyzer.analyze_message_stream(messages)
+    intent_counts = {}
+    for _, dist in classified:
+        intent_counts[dist.primary_intent] = intent_counts.get(dist.primary_intent, 0) + 1
+
+    table = Table(title="Community Emotional Intent Distribution")
+    table.add_column("Intent", style="cyan")
+    table.add_column("Message Count", justify="right", style="green")
+    table.add_column("Percentage", justify="right", style="yellow")
+    for intent, count in sorted(intent_counts.items(), key=lambda x: x[1], reverse=True):
+        pct = (count / len(messages)) * 100.0 if messages else 0.0
+        table.add_row(intent, str(count), f"{pct:.1f}%")
+    console.print(table)
+
+    # Meme bursts
+    tracker = MemeBurstTracker(window_sec=window_sec, min_distinct_authors=min_authors)
+    bursts = tracker.detect_meme_bursts(messages)
+    console.print(f"[bold green]Meme Bursts Detected:[/bold green] {len(bursts)}")
+    if bursts:
+        b_table = Table(title="Emergent Meme Bursts")
+        b_table.add_column("Time (s)", style="cyan")
+        b_table.add_column("Representative Text", style="white")
+        b_table.add_column("Originator", style="magenta")
+        b_table.add_column("Velocity", justify="right", style="yellow")
+        for b in bursts[:5]:
+            b_table.add_row(
+                f"{b.burst_start_sec:.1f}s - {b.burst_end_sec:.1f}s",
+                b.representative_text[:40],
+                b.origin_author_name,
+                f"{b.propagation_velocity:.1f} msg/s",
+            )
+        console.print(b_table)
+
+    # Chatter influence
+    scorer = ChatterInfluenceScorer()
+    profiles = scorer.score_chatters(messages, bursts)
+    if profiles:
+        c_table = Table(title="Top Opinion Leader Chatters")
+        c_table.add_column("Author", style="cyan")
+        c_table.add_column("Total Msgs", justify="right", style="white")
+        c_table.add_column("Meme Origins", justify="right", style="green")
+        c_table.add_column("Influence Score", justify="right", style="bold yellow")
+        for p in profiles[:5]:
+            c_table.add_row(
+                p.author_name,
+                str(p.total_messages),
+                str(p.first_meme_origin_count),
+                f"{p.influence_score:.2f}",
+            )
+        console.print(c_table)
+
+
+@app.command()
+def sponsor(
+    brand_name: str = typer.Argument(..., help="Brand name, e.g. 'Starforge Systems'"),
+    chat: Path = typer.Option(..., "--chat", "-c", help="Path to chat replay JSON"),
+    start_sec: float = typer.Option(0.0, "--start", "-s", help="Sponsor segment start second"),
+    end_sec: float = typer.Option(60.0, "--end", "-e", help="Sponsor segment end second"),
+    alias: Optional[str] = typer.Option(None, "--alias", "-a", help="Comma-separated brand aliases"),
+    promo: Optional[str] = typer.Option(None, "--promo", "-p", help="Promo code (e.g. ASMON)"),
+):
+    """Evaluate sponsor engagement window and compute Brand Attention Score."""
+    from stream_fusion.models.schemas import BrandProfile, SponsorSegment
+    from stream_fusion.analytics.sponsor_quantifier import SponsorReportGenerator
+
+    analyzer = ChatAnalyzer()
+    messages = analyzer.parse_twitch_downloader_json(chat)
+
+    aliases = [a.strip() for a in alias.split(",")] if alias else []
+    promos = [p.strip() for p in promo.split(",")] if promo else []
+
+    brand = BrandProfile(
+        brand_id=brand_name.lower().replace(" ", "_"),
+        brand_name=brand_name,
+        aliases=aliases,
+        promo_codes=promos,
+    )
+    segment = SponsorSegment(
+        segment_id=1,
+        brand_id=brand.brand_id,
+        start_sec=start_sec,
+        end_sec=end_sec,
+    )
+    report_gen = SponsorReportGenerator()
+    report = report_gen.generate_report(brand, segment, messages)
+
+    console.print(f"[bold purple]Sponsor Impact Analysis[/bold purple]: {brand.brand_name}")
+    console.print(f"Segment: [{segment.start_sec:.1f}s - {segment.end_sec:.1f}s]")
+    console.print(f"Chat Mentions: [bold cyan]{report.chat_mention_count}[/bold cyan] ({report.mention_velocity:.2f}/s)")
+    console.print(f"Sentiment Delta: [bold green]{report.sentiment_delta:+.2f}[/bold green] (window: {report.sentiment_during_sponsor:.2f} vs stream: {report.stream_baseline_sentiment:.2f})")
+    console.print(f"Backlash Index: [bold red]{report.backlash_index:.1%}[/bold red]")
+    console.print(f"Brand Attention Score: [bold yellow]{report.brand_attention_score:.1f} / 100.0[/bold yellow]")
+
+
 if __name__ == "__main__":
     app()
+
