@@ -1,0 +1,63 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "stream-fusion"
+version = "0.1.0"
+description = "Multimodal Livestream VOD & Chat Grounding and Analysis Framework"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "StreamFusion Contributors" }
+]
+keywords = [
+    "twitch",
+    "multimodal",
+    "whisper",
+    "streamer-analysis",
+    "vlm",
+    "diarization",
+    "chat-replay",
+    "asmongold"
+]
+dependencies = [
+    "pydantic>=2.6.0",
+    "typer>=0.12.0",
+    "rich>=13.7.0",
+    "pyyaml>=6.0.1",
+    "pandas>=2.2.0",
+    "pillow>=10.2.0",
+    "requests>=2.31.0"
+]
+
+[project.optional-dependencies]
+ingest = [
+    "yt-dlp>=2024.03.10",
+    "chat-downloader>=0.2.7"
+]
+audio = [
+    "faster-whisper>=1.0.0",
+    "pyannote.audio>=3.1.0"
+]
+vision = [
+    "transformers>=4.40.0",
+    "accelerate>=0.28.0",
+    "timm>=0.9.16",
+    "einops>=0.7.0"
+]
+dev = [
+    "pytest>=8.0.0",
+    "black>=24.0.0",
+    "ruff>=0.3.0"
+]
+all = [
+    "stream-fusion[ingest,audio,vision,dev]"
+]
+
+[project.scripts]
+streamfusion = "stream_fusion.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stream_fusion"]
