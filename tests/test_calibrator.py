@@ -60,3 +60,24 @@ def test_latency_fallback_on_sparse_data():
     # Insufficient chat data -> should safely return default lag
     estimated = calibrator.compute_optimal_latency([], [], stream_duration_sec=10.0)
     assert estimated == 4.2
+
+
+def test_compute_rolling_latency_curve():
+    calibrator = LatencyCalibrator(default_lag_sec=4.0)
+    # Short duration fallback test
+    curve_short = calibrator.compute_rolling_latency_curve([], [], stream_duration_sec=60.0)
+    assert len(curve_short) == 1
+    assert curve_short[0]["latency_offset_sec"] == 4.0
+
+    # Multi-window test
+    curve_long = calibrator.compute_rolling_latency_curve(
+        audio_segments=[],
+        chat_messages=[],
+        stream_duration_sec=1200.0,
+        window_size_sec=300.0,
+        step_sec=150.0,
+    )
+    assert len(curve_long) >= 5
+    for pt in curve_long:
+        assert "window_center_sec" in pt
+        assert "latency_offset_sec" in pt

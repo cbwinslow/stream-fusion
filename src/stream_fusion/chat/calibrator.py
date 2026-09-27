@@ -71,3 +71,40 @@ class LatencyCalibrator:
                         best_lag_sec = lag_bin * resolution_sec
 
         return best_lag_sec
+
+    def compute_rolling_latency_curve(
+        self,
+        audio_segments: List[AudioSegment],
+        chat_messages: List[ChatMessage],
+        stream_duration_sec: float,
+        window_size_sec: float = 300.0,
+        step_sec: float = 150.0,
+    ) -> List[dict]:
+        """Computes time-varying latency delay offset over time to track broadcast buffer drift."""
+        if stream_duration_sec <= window_size_sec:
+            base_lag = self.compute_optimal_latency(audio_segments, chat_messages, stream_duration_sec)
+            return [{"window_center_sec": stream_duration_sec / 2.0, "latency_offset_sec": base_lag}]
+
+        num_windows = int((stream_duration_sec - window_size_sec) // step_sec) + 1
+        curve = []
+        for i in range(num_windows):
+            w_start = i * step_sec
+            w_end = min(stream_duration_sec, w_start + window_size_sec)
+            sub_audio = [
+                s for s in audio_segments
+                if max(w_start, s.start_sec) < min(w_end, s.end_sec)
+            ]
+            sub_chat = [
+                m for m in chat_messages
+                if w_start <= m.timestamp_offset <= w_end
+            ]
+            lag = self.compute_optimal_latency(
+                sub_audio, sub_chat, stream_duration_sec=(w_end - w_start)
+            )
+            curve.append(
+                {
+                    "window_center_sec": (w_start + w_end) / 2.0,
+                    "latency_offset_sec": lag,
+                }
+            )
+        return curve
