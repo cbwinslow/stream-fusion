@@ -10,6 +10,7 @@ from stream_fusion.models.schemas import AudioSegment, VisualKeyframe, ChatMessa
 from stream_fusion.chat.analyzer import ChatAnalyzer
 from stream_fusion.fusion.matrix import FusionEngine
 from stream_fusion.export.html_report import export_html_report
+from stream_fusion.export.clipper import VerticalHighlightClipper
 from stream_fusion.pipeline import StreamPipeline
 from stream_fusion.config import StreamFusionConfig
 
@@ -39,6 +40,20 @@ def process(
         duration_sec=duration,
     )
     console.print(f"[bold green][OK] Analysis Complete for {result.stream_id}![/bold green]")
+
+
+@app.command()
+def clip(
+    video: Path = typer.Argument(..., help="Path to input video file"),
+    start: float = typer.Option(0.0, "--start", "-s", help="Start time in seconds"),
+    end: float = typer.Option(15.0, "--end", "-e", help="End time in seconds"),
+    output: Path = typer.Option(Path("./output_short.mp4"), "--out", "-o", help="Output path for 9:16 vertical short"),
+):
+    """Clip a highlight segment into a 9:16 vertical video for YouTube Shorts / TikTok."""
+    console.print(f"[bold purple]StreamFusion Clipper[/bold purple]: Extracting [{start:.1f}s - {end:.1f}s] to 9:16 vertical short")
+    clipper = VerticalHighlightClipper()
+    res = clipper.export_highlight_short(video, start_sec=start, end_sec=end, output_path=output)
+    console.print(f"[bold green][OK] Vertical short exported to:[/bold green] {res.resolve()}")
 
 
 @app.command()
