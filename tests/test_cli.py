@@ -122,4 +122,32 @@ def test_cli_audit_commands(tmp_path: Path):
     assert "Audit Run Comparison" in res_comp.output
     assert "Total Pipeline Duration" in res_comp.output
 
+    # Test compare with invalid ID
+    res_comp_err = runner.invoke(app, ["audit", "compare", "non_existent_run", "--db", str(db_file)])
+    assert res_comp_err.exit_code == 1
+    assert "not found" in res_comp_err.output
+
+
+def test_cli_query_claims():
+    res = runner.invoke(app, ["query-claims", "Godzilla", "--creator", "asmongold"])
+    assert res.exit_code == 0
+    assert "Knowledge Query Results" in res.output
+    assert "Synthesized Entity Stances" in res.output
+
+
+def test_cli_clip_execution(tmp_path: Path):
+    fixture_video = Path(__file__).parent / "fixtures" / "sample_test_vod.mp4"
+    out_short = tmp_path / "test_short.mp4"
+    res = runner.invoke(app, ["clip", str(fixture_video), "--start", "0.0", "--end", "2.0", "--out", str(out_short)])
+    assert res.exit_code == 0
+    assert "Vertical short exported" in res.output
+    assert out_short.exists()
+
+
+def test_cli_audit_benchmark_missing_video():
+    res = runner.invoke(app, ["audit", "benchmark", "--video", "missing_video_12345.mp4"])
+    assert res.exit_code == 1
+    assert "not found" in res.output
+
+
 

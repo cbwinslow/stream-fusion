@@ -51,19 +51,28 @@ class MediaDemuxer:
     def __init__(self, ffmpeg_bin: Optional[str] = None):
         self.ffmpeg_bin = ffmpeg_bin or find_ffmpeg_binary()
 
-    def extract_audio_16k_mono(self, video_path: Path, output_wav_path: Path) -> Path:
+    def extract_audio_16k_mono(
+        self,
+        video_path: Path,
+        output_wav_path: Path,
+        start_time_sec: Optional[float] = None,
+        duration_sec: Optional[float] = None,
+    ) -> Path:
         """Extracts 16kHz mono WAV suitable for Faster-Whisper and PyAnnote."""
         output_wav_path.parent.mkdir(parents=True, exist_ok=True)
-        cmd = [
-            self.ffmpeg_bin,
-            "-y",
-            "-i", str(video_path),
+        cmd = [self.ffmpeg_bin, "-y"]
+        if start_time_sec is not None and start_time_sec > 0:
+            cmd.extend(["-ss", str(start_time_sec)])
+        cmd.extend(["-i", str(video_path)])
+        if duration_sec is not None and duration_sec > 0:
+            cmd.extend(["-t", str(duration_sec)])
+        cmd.extend([
             "-vn",
             "-acodec", "pcm_s16le",
             "-ar", "16000",
             "-ac", "1",
             str(output_wav_path),
-        ]
+        ])
         res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         if res.returncode != 0:
             raise RuntimeError(f"FFmpeg audio extraction failed (code {res.returncode}): {res.stderr}")
@@ -74,21 +83,29 @@ class MediaDemuxer:
         return output_wav_path
 
     def extract_frames_at_interval(
-        self, video_path: Path, output_dir: Path, interval_sec: float = 2.0
+        self,
+        video_path: Path,
+        output_dir: Path,
+        interval_sec: float = 2.0,
+        start_time_sec: Optional[float] = None,
+        duration_sec: Optional[float] = None,
     ) -> List[Path]:
         """Extracts frames spaced by interval_sec seconds."""
         output_dir.mkdir(parents=True, exist_ok=True)
         fps = 1.0 / interval_sec
         pattern = output_dir / "frame_%04d.jpg"
 
-        cmd = [
-            self.ffmpeg_bin,
-            "-y",
-            "-i", str(video_path),
+        cmd = [self.ffmpeg_bin, "-y"]
+        if start_time_sec is not None and start_time_sec > 0:
+            cmd.extend(["-ss", str(start_time_sec)])
+        cmd.extend(["-i", str(video_path)])
+        if duration_sec is not None and duration_sec > 0:
+            cmd.extend(["-t", str(duration_sec)])
+        cmd.extend([
             "-vf", f"fps={fps}",
             "-q:v", "2",
             str(pattern),
-        ]
+        ])
         res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         if res.returncode != 0:
             raise RuntimeError(f"FFmpeg frame extraction failed (code {res.returncode}): {res.stderr}")

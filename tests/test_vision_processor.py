@@ -51,3 +51,51 @@ def test_missing_image_exception():
     processor = VisionProcessor(backend="fallback")
     with pytest.raises(FileNotFoundError):
         processor.process_frame(Path("non_existent_file.jpg"), 0.0, 0)
+
+
+def test_vision_processor_ollama(monkeypatch):
+    frame_path = Path(__file__).parent / "fixtures" / "sample_frame.jpg"
+    processor = VisionProcessor(backend="ollama")
+
+    # 1. Success mock
+    class MockResponse:
+        status_code = 200
+        def json(self):
+            return {"response": "Streamer is watching a game trailer with live commentary."}
+
+    import requests
+    monkeypatch.setattr(requests, "post", lambda *args, **kwargs: MockResponse())
+    kf = processor.process_frame(frame_path, timestamp_sec=10.0, frame_index=1)
+    assert kf.scene_type == "REACT_VIDEO"
+    assert "game trailer" in kf.screen_summary
+
+    # 2. Connection failure fallback
+    def mock_fail(*args, **kwargs):
+        raise ConnectionError("Ollama endpoint unreachable")
+
+    monkeypatch.setattr(requests, "post", mock_fail)
+    kf_fallback = processor.process_frame(frame_path, timestamp_sec=10.0, frame_index=1)
+    assert "640x360" in kf_fallback.screen_summary
+
+
+def test_vision_processor_florence_fallback():
+    frame_path = Path(__file__).parent / "fixtures" / "sample_frame.jpg"
+    # Florence on invalid device or missing weights should fall back cleanly without crashing
+    processor = VisionProcessor(backend="florence", model_id="invalid/model/id")
+    kf = processor.process_frame(frame_path, timestamp_sec=5.0, frame_index=1)
+    assert kf.frame_index == 1
+    assert "640x360" in kf.screen_summary
+
+
+def test_locate_streamer_facecam_fullscreen_filter():
+    # Candidate 1 is fullscreen person (> 0.85 w and h)
+    # Candidate 2 is a corner streamer facecam
+    objects = [
+        BoundingBox(label="person", confidence=0.9, box=[0.0, 0.0, 0.95, 0.95]),
+        BoundingBox(label="streamer", confidence=0.95, box=[0.7, 0.7, 0.95, 0.95]),
+    ]
+    facecam = VisionProcessor.locate_streamer_facecam(objects)
+    assert facecam is not None
+    assert facecam["x"] == pytest.approx(0.7, abs=0.01)
+    assert facecam["y"] == pytest.approx(0.7, abs=0.01)
+

@@ -48,31 +48,55 @@ class ChatAnalyzer:
         self.latency_offset_sec = latency_offset_sec
 
     def parse_twitch_downloader_json(self, json_path: Path) -> List[ChatMessage]:
-        """Parses standard TwitchDownloader / chat-downloader JSON format."""
-        with open(json_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        """Parses standard TwitchDownloader or chat-downloader JSON formats."""
+        if not json_path.exists():
+            raise FileNotFoundError(f"Chat JSON file not found: {json_path}")
+
+        try:
+            with open(json_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Malformed or corrupt chat JSON in {json_path}: {e}") from e
 
         raw_comments = data if isinstance(data, list) else data.get("comments", [])
         messages: List[ChatMessage] = []
 
         for idx, item in enumerate(raw_comments):
-            offset = item.get("content_offset_seconds", 0.0)
-            commenter = item.get("commenter", {})
-            msg_body = item.get("message", {}).get("body", "")
+            # Support both TwitchDownloader ("content_offset_seconds") and chat-downloader ("time_in_seconds")
+            offset = item.get("content_offset_seconds")
+            if offset is None:
+                offset = item.get("time_in_seconds", 0.0)
+
+            # Support both commenter (TwitchDownloader) and author (chat-downloader)
+            author_obj = item.get("commenter") or item.get("author") or {}
+            user_id = str(author_obj.get("_id") or author_obj.get("id") or "anon")
+            author_name = str(author_obj.get("display_name") or author_obj.get("name") or "Anonymous")
+
+            # Support message body as dict or string
+            raw_msg = item.get("message", "")
+            if isinstance(raw_msg, dict):
+                msg_body = raw_msg.get("body", "")
+                fragments = raw_msg.get("fragments", [])
+            else:
+                msg_body = str(raw_msg)
+                fragments = item.get("emotes", [])
 
             # Extract emotes if present
             emotes = []
-            for em in item.get("message", {}).get("fragments", []):
-                em_id = em.get("emoticon_id")
-                if em_id:
-                    emotes.append(ChatEmote(id=str(em_id), name=em.get("text", "")))
+            if isinstance(fragments, list):
+                for em in fragments:
+                    if isinstance(em, dict):
+                        em_id = em.get("emoticon_id") or em.get("id")
+                        em_name = em.get("text") or em.get("name", "")
+                        if em_id:
+                            emotes.append(ChatEmote(id=str(em_id), name=em_name))
 
             messages.append(
                 ChatMessage(
-                    message_id=str(item.get("_id", f"msg_{idx}")),
+                    message_id=str(item.get("_id") or item.get("message_id") or f"msg_{idx}"),
                     timestamp_offset=float(offset),
-                    user_id=str(commenter.get("_id", "anon")),
-                    author_name=commenter.get("display_name", "Anonymous"),
+                    user_id=user_id,
+                    author_name=author_name,
                     content=msg_body,
                     emotes=emotes,
                 )

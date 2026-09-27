@@ -41,3 +41,43 @@ def test_empty_chat_handling():
         assert b["chat_message_count"] == 0
         assert b["chat_velocity_per_sec"] == 0.0
         assert b["chat_sentiment_polarity"] == 0.0
+
+
+def test_chat_parser_error_handling(tmp_path: Path):
+    analyzer = ChatAnalyzer()
+
+    # 1. Non-existent file
+    import pytest
+    with pytest.raises(FileNotFoundError):
+        analyzer.parse_twitch_downloader_json(tmp_path / "does_not_exist.json")
+
+    # 2. Corrupted JSON file
+    bad_json = tmp_path / "bad.json"
+    bad_json.write_text("{ incomplete json...", encoding="utf-8")
+    with pytest.raises(ValueError, match="Malformed or corrupt chat JSON"):
+        analyzer.parse_twitch_downloader_json(bad_json)
+
+
+def test_chat_parser_chat_downloader_format(tmp_path: Path):
+    # Tests YouTube / chat-downloader list of dicts format
+    cd_file = tmp_path / "chat_downloader.json"
+    data = [
+        {
+            "time_in_seconds": 12.5,
+            "author": {"id": "user_42", "name": "Chatter42"},
+            "message": "KEKW what a moment",
+            "emotes": [{"id": "kekw_1", "name": "KEKW"}],
+        }
+    ]
+    import json
+    cd_file.write_text(json.dumps(data), encoding="utf-8")
+
+    analyzer = ChatAnalyzer()
+    msgs = analyzer.parse_twitch_downloader_json(cd_file)
+    assert len(msgs) == 1
+    assert msgs[0].timestamp_offset == 12.5
+    assert msgs[0].author_name == "Chatter42"
+    assert msgs[0].content == "KEKW what a moment"
+    assert len(msgs[0].emotes) == 1
+    assert msgs[0].emotes[0].name == "KEKW"
+

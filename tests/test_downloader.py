@@ -34,3 +34,35 @@ def test_dry_run_simulation(tmp_path: Path):
     # Testing simulation mode with public domain or dummy url flag
     cmd = downloader.build_download_command("https://example.com/video", out_file)
     assert "--simulate" not in cmd  # not inserted yet
+
+
+def test_build_download_command_no_slice_no_chat():
+    downloader = StreamDownloader()
+    out_file = Path("output/simple.mp4")
+    cmd = downloader.build_download_command(
+        url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        output_path=out_file,
+        start_time_sec=None,
+        duration_sec=None,
+        download_chat=False,
+    )
+    assert "--download-sections" not in cmd
+    assert "--write-subs" not in cmd
+
+
+def test_downloader_missing_binary(monkeypatch):
+    import shutil
+    import pytest
+    monkeypatch.setattr(shutil, "which", lambda cmd: None)
+    monkeypatch.setenv("APPDATA", "")
+    with pytest.raises(FileNotFoundError, match="yt-dlp binary not found"):
+        find_ytdlp_binary()
+
+
+def test_download_segment_failure(tmp_path: Path):
+    import pytest
+    downloader = StreamDownloader()
+    out_file = tmp_path / "fail.mp4"
+    with pytest.raises(RuntimeError):
+        downloader.download_segment("https://invalid-non-existent-url-999.test/video", out_file)
+

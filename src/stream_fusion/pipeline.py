@@ -41,6 +41,7 @@ class StreamPipeline:
         chat_input: Optional[Path] = None,
         output_dir: Optional[Path] = None,
         duration_sec: Optional[float] = None,
+        start_time_sec: Optional[float] = None,
         latency_offset: Optional[float] = None,
         auto_calibrate_latency: Optional[bool] = None,
         cache_dir: Optional[Path] = None,
@@ -57,6 +58,7 @@ class StreamPipeline:
             else None
         )
         c_idx = chunk_index if chunk_index is not None else 0
+        s_offset = start_time_sec or 0.0
 
         # -------------------------------------------------------------
         # Phase 1: Ingestion & Demuxing
@@ -64,11 +66,17 @@ class StreamPipeline:
         with (telemetry.stage("phase_1_demuxing") if telemetry else nullcontext()):
             console.print(f"[bold cyan][1/5][/bold cyan] Demuxing media: {media_input.name}")
             wav_path = out_path / f"{stream_id}_audio_16k.wav"
-            self.demuxer.extract_audio_16k_mono(media_input, wav_path)
+            self.demuxer.extract_audio_16k_mono(
+                media_input, wav_path, start_time_sec=start_time_sec, duration_sec=duration_sec
+            )
 
             frames_dir = out_path / f"{stream_id}_keyframes"
             frames = self.demuxer.extract_frames_at_interval(
-                media_input, frames_dir, interval_sec=self.config.vision.sample_interval_sec
+                media_input,
+                frames_dir,
+                interval_sec=self.config.vision.sample_interval_sec,
+                start_time_sec=start_time_sec,
+                duration_sec=duration_sec,
             )
             effective_duration = duration_sec or (len(frames) * self.config.vision.sample_interval_sec)
 
@@ -87,14 +95,29 @@ class StreamPipeline:
                     device=self.config.audio.device,
                     compute_type=self.config.audio.compute_type,
                 )
-                audio_segments = transcriber.transcribe(wav_path)
-                transcriber.unload()
+                try:
+                    audio_segments = transcriber.transcribe(wav_path)
+                finally:
+                    transcriber.unload()
+
+                # Adjust start/end timestamps if chunk was sliced from stream offset
+                if s_offset > 0:
+                    for seg in audio_segments:
+                        seg.start_sec = round(seg.start_sec + s_offset, 3)
+                        seg.end_sec = round(seg.end_sec + s_offset, 3)
+                        if seg.words:
+                            for w in seg.words:
+                                w.start = round(w.start + s_offset, 3)
+                                w.end = round(w.end + s_offset, 3)
 
                 diarizer = ReactionDiarizer(
                     hf_token=self.config.audio.hf_token, device=self.config.audio.device
                 )
-                audio_segments = diarizer.diarize_and_tag(audio_segments, wav_path)
-                diarizer.unload()
+                try:
+                    audio_segments = diarizer.diarize_and_tag(audio_segments, wav_path)
+                finally:
+                    diarizer.unload()
+
                 if checkpoint_mgr:
                     checkpoint_mgr.save_chunk_audio(c_idx, audio_segments)
                 console.print(f"      [green][OK][/green] Processed {len(audio_segments)} diarized audio segments")
@@ -115,11 +138,14 @@ class StreamPipeline:
                     detect_objects=self.config.vision.object_detection_enabled,
                 )
                 keyframes = []
-                for idx, f_path in enumerate(frames):
-                    t_sec = idx * self.config.vision.sample_interval_sec
-                    kf = vision_processor.process_frame(f_path, timestamp_sec=t_sec, frame_index=idx + 1)
-                    keyframes.append(kf)
-                vision_processor.unload()
+                try:
+                    for idx, f_path in enumerate(frames):
+                        t_sec = s_offset + (idx * self.config.vision.sample_interval_sec)
+                        kf = vision_processor.process_frame(f_path, timestamp_sec=t_sec, frame_index=idx + 1)
+                        keyframes.append(kf)
+                finally:
+                    vision_processor.unload()
+
                 if checkpoint_mgr:
                     checkpoint_mgr.save_chunk_vision(c_idx, keyframes)
                 console.print(f"      [green][OK][/green] Parsed {len(keyframes)} visual scene keyframes")
@@ -292,6 +318,7 @@ class StreamPipeline:
                 chat_input=chat_input,
                 output_dir=chunk_out,
                 duration_sec=chunk_duration_sec,
+                start_time_sec=chunk_start,
                 latency_offset=latency_offset,
                 cache_dir=cache_dir,
                 chunk_index=i,

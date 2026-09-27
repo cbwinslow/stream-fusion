@@ -21,6 +21,8 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+.coverage
+.coverage.*
 
 # Virtual Environments
 .env

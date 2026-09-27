@@ -68,3 +68,36 @@ def test_fusion_matrix_alignment():
     assert s5.streamer_transcript == "This game is crazy"
     assert s5.active_scene_type == "GAMEPLAY"
     assert s5.chat_message_count == 1
+
+
+def test_highlight_audience_alignment_labels():
+    from stream_fusion.models.schemas import FusionSlice
+
+    engine = FusionEngine()
+    slices = [
+        FusionSlice(
+            slice_index=1,
+            bucket_index=1,
+            start_sec=10.0,
+            end_sec=12.0,
+            is_spike_moment=True,
+            chat_velocity_per_sec=8.0,
+            agreement_score=-0.75,
+            streamer_transcript="I loved this so much",
+        ),
+        FusionSlice(
+            slice_index=2,
+            bucket_index=2,
+            start_sec=20.0,
+            end_sec=22.0,
+            is_spike_moment=True,
+            chat_velocity_per_sec=5.0,
+            agreement_score=0.10,
+            streamer_transcript="Maybe okay",
+        ),
+    ]
+    highlights = engine._extract_highlights(slices)
+    assert len(highlights) == 2
+    assert highlights[0]["audience_alignment"] == "AUDIENCE_REVOLT"
+    assert highlights[1]["audience_alignment"] == "DIVIDED"
+

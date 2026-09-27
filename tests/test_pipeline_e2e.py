@@ -52,3 +52,31 @@ def test_stream_pipeline_end_to_end(tmp_path: Path):
     jsonl_file = tmp_path / "e2e_output" / "sample_test_vod_training_triples.jsonl"
     assert jsonl_file.exists()
     assert jsonl_file.stat().st_size > 100
+
+
+def test_stream_pipeline_run_chunked_e2e(tmp_path: Path):
+    fixture_video = Path(__file__).parent / "fixtures" / "sample_test_vod.mp4"
+    fixture_chat = Path(__file__).parent / "fixtures" / "sample_twitch_chat.json"
+
+    config = StreamFusionConfig()
+    config.audio.whisper_model = "tiny"
+    config.audio.device = "cpu"
+    config.audio.compute_type = "int8"
+    config.vision.device = "cpu"
+    config.vision.sample_interval_sec = 2.0
+    config.chat.bucket_window_sec = 2.0
+
+    pipeline = StreamPipeline(config=config)
+    results = pipeline.run_chunked(
+        media_input=fixture_video,
+        chunk_duration_sec=5.0,
+        total_duration_sec=10.0,
+        chat_input=fixture_chat,
+        output_dir=tmp_path / "chunks_out",
+        cache_dir=tmp_path / "chunks_cache",
+    )
+
+    assert len(results) == 2
+    assert (tmp_path / "chunks_out" / "chunk_000").exists()
+    assert (tmp_path / "chunks_out" / "chunk_001").exists()
+

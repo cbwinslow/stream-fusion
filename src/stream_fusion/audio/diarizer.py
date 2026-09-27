@@ -64,19 +64,12 @@ class ReactionDiarizer:
 
             return {"rms": rms, "spectral_centroid": centroid}
 
-    def diarize_and_tag(
+    def _diarize_with_acoustic_profiling(
         self, audio_segments: List[AudioSegment], wav_path: Path
     ) -> List[AudioSegment]:
-        """Tags each AudioSegment with 'STREAMER' or 'EXTERNAL_VIDEO'."""
-        if not audio_segments:
-            return []
-
-        # If PyAnnote is configured and HF token is provided
-        if self.hf_token:
-            return self._diarize_with_pyannote(audio_segments, wav_path)
-
-        # Zero-token acoustic profiling fallback:
-        # Streamer broadcast microphone has distinct high RMS and lower spectral centroid (proximity effect)
+        """Zero-token acoustic profiling fallback:
+        Streamer broadcast microphone has distinct high RMS and lower spectral centroid (proximity effect).
+        """
         profiles = []
         for seg in audio_segments:
             prof = self._extract_segment_acoustic_profile(wav_path, seg.start_sec, seg.end_sec)
@@ -94,34 +87,47 @@ class ReactionDiarizer:
 
         return audio_segments
 
+    def diarize_and_tag(
+        self, audio_segments: List[AudioSegment], wav_path: Path
+    ) -> List[AudioSegment]:
+        """Tags each AudioSegment with 'STREAMER' or 'EXTERNAL_VIDEO'."""
+        if not audio_segments:
+            return []
+
+        # If PyAnnote is configured and HF token is provided
+        if self.hf_token:
+            try:
+                return self._diarize_with_pyannote(audio_segments, wav_path)
+            except Exception:
+                # Gracefully fall back to acoustic profiling on neural failure
+                pass
+
+        return self._diarize_with_acoustic_profiling(audio_segments, wav_path)
+
     def _diarize_with_pyannote(
         self, audio_segments: List[AudioSegment], wav_path: Path
     ) -> List[AudioSegment]:
         """Neural diarization using pyannote.audio when credentials exist."""
-        try:
-            from pyannote.audio import Pipeline
-            if self._pyannote_pipeline is None:
-                self._pyannote_pipeline = Pipeline.from_pretrained(
-                    "pyannote/speaker-diarization-3.1",
-                    use_auth_token=self.hf_token,
-                )
-            diarization = self._pyannote_pipeline(str(wav_path))
+        from pyannote.audio import Pipeline
+        if self._pyannote_pipeline is None:
+            self._pyannote_pipeline = Pipeline.from_pretrained(
+                "pyannote/speaker-diarization-3.1",
+                use_auth_token=self.hf_token,
+            )
+        diarization = self._pyannote_pipeline(str(wav_path))
 
-            for seg in audio_segments:
-                # Query diarization interval at midpoint
-                midpoint = (seg.start_sec + seg.end_sec) / 2.0
-                speaker = "SPEAKER_00"
-                for turn, _, spk in diarization.itertracks(yield_label=True):
-                    if turn.start <= midpoint <= turn.end:
-                        speaker = spk
-                        break
-                # Default speaker 0 to streamer
-                seg.speaker_label = "STREAMER" if speaker == "SPEAKER_00" else "EXTERNAL_VIDEO"
+        for seg in audio_segments:
+            # Query diarization interval at midpoint
+            midpoint = (seg.start_sec + seg.end_sec) / 2.0
+            speaker = "SPEAKER_00"
+            for turn, _, spk in diarization.itertracks(yield_label=True):
+                if turn.start <= midpoint <= turn.end:
+                    speaker = spk
+                    break
+            # Default speaker 0 to streamer
+            seg.speaker_label = "STREAMER" if speaker == "SPEAKER_00" else "EXTERNAL_VIDEO"
 
-            return audio_segments
-        except Exception:
-            # Fallback to acoustic profile on error
-            return self.diarize_and_tag(audio_segments, wav_path)
+        return audio_segments
 
     def unload(self):
         """Releases all neural pipeline weights from memory."""
