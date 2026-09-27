@@ -34,6 +34,8 @@ venv.bak/
 # Caches & Models
 cache/
 output/
+output_*/
+sample_*
 *.mp4
 *.wav
 *.mkv

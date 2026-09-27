@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import pytest
+from stream_fusion.models.schemas import BoundingBox
 from stream_fusion.vision.processor import VisionProcessor
 
 
@@ -20,6 +21,30 @@ def test_vision_processor_fallback():
     # Test unload
     processor.unload()
     assert processor._model is None
+
+
+def test_locate_streamer_facecam():
+    # 1. No detected objects -> None
+    assert VisionProcessor.locate_streamer_facecam([]) is None
+
+    # 2. Detected objects with no person -> None
+    non_person = [
+        BoundingBox(label="monitor", confidence=0.9, box=[0.1, 0.1, 0.8, 0.8]),
+        BoundingBox(label="keyboard", confidence=0.8, box=[0.7, 0.2, 0.9, 0.7]),
+    ]
+    assert VisionProcessor.locate_streamer_facecam(non_person) is None
+
+    # 3. Streamer detected in bottom-right corner
+    objects = [
+        BoundingBox(label="screen", confidence=0.95, box=[0.0, 0.0, 1.0, 1.0]),
+        BoundingBox(label="person", confidence=0.98, box=[0.60, 0.70, 0.98, 0.98]),
+    ]
+    facecam = VisionProcessor.locate_streamer_facecam(objects)
+    assert facecam is not None
+    assert facecam["x"] == pytest.approx(0.70, abs=0.01)
+    assert facecam["y"] == pytest.approx(0.60, abs=0.01)
+    assert facecam["w"] == pytest.approx(0.28, abs=0.01)
+    assert facecam["h"] == pytest.approx(0.38, abs=0.01)
 
 
 def test_missing_image_exception():

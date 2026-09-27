@@ -1,7 +1,7 @@
 """StreamFusion end-to-end multimodal pipeline orchestrator."""
 
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 from rich.console import Console
 
 from stream_fusion.models.schemas import StreamAnalysisResult
@@ -16,6 +16,7 @@ from stream_fusion.chat.calibrator import LatencyCalibrator
 from stream_fusion.fusion.matrix import FusionEngine
 from stream_fusion.export.html_report import export_html_report
 from stream_fusion.export.dataset import export_to_parquet, export_training_triples_jsonl
+from stream_fusion.export.clipper import VerticalHighlightClipper
 
 console = Console()
 
@@ -37,6 +38,8 @@ class StreamPipeline:
         chat_input: Optional[Path] = None,
         output_dir: Optional[Path] = None,
         duration_sec: Optional[float] = None,
+        latency_offset: Optional[float] = None,
+        auto_calibrate_latency: Optional[bool] = None,
     ) -> StreamAnalysisResult:
         """Executes the complete phased sequential pipeline."""
         out_path = output_dir or self.config.storage.output_dir
@@ -82,6 +85,7 @@ class StreamPipeline:
         vision_processor = VisionProcessor(
             backend="florence" if self.config.vision.device == "cuda" else "fallback",
             device=self.config.vision.device,
+            detect_objects=self.config.vision.object_detection_enabled,
         )
         keyframes = []
         for idx, f_path in enumerate(frames):
@@ -99,15 +103,27 @@ class StreamPipeline:
         if chat_input and chat_input.exists():
             raw_chat = self.chat_analyzer.parse_twitch_downloader_json(chat_input)
 
-        # Calculate exact stream latency delay offset
-        optimal_lag = self.calibrator.compute_optimal_latency(
-            audio_segments=audio_segments,
-            chat_messages=raw_chat,
-            stream_duration_sec=effective_duration,
+        use_auto_calib = (
+            auto_calibrate_latency
+            if auto_calibrate_latency is not None
+            else self.config.chat.auto_calibrate_latency
         )
-        console.print(f"      [green][OK][/green] Calibrated broadcast delay: [bold yellow]{optimal_lag:.2f}s[/bold yellow]")
 
-        self.chat_analyzer.latency_offset_sec = optimal_lag
+        if latency_offset is not None:
+            effective_lag = latency_offset
+            console.print(f"      [green][OK][/green] Using manual broadcast delay: [bold yellow]{effective_lag:.2f}s[/bold yellow]")
+        elif use_auto_calib:
+            effective_lag = self.calibrator.compute_optimal_latency(
+                audio_segments=audio_segments,
+                chat_messages=raw_chat,
+                stream_duration_sec=effective_duration,
+            )
+            console.print(f"      [green][OK][/green] Calibrated broadcast delay: [bold yellow]{effective_lag:.2f}s[/bold yellow]")
+        else:
+            effective_lag = self.config.chat.latency_offset_sec
+            console.print(f"      [green][OK][/green] Using config broadcast delay: [bold yellow]{effective_lag:.2f}s[/bold yellow]")
+
+        self.chat_analyzer.latency_offset_sec = effective_lag
         chat_buckets = self.chat_analyzer.aggregate_into_buckets(
             raw_chat,
             stream_duration_sec=effective_duration,
@@ -141,23 +157,77 @@ class StreamPipeline:
         export_training_triples_jsonl(result, jsonl_output)
         console.print(f"[bold green][OK] Multimodal Training Triples:[/bold green] {jsonl_output.resolve()}")
 
-        # Auto-render top highlights as 9:16 vertical shorts
+        # Auto-render top highlights as 9:16 vertical shorts with karaoke subtitles and facecam localization
         if result.highlights:
             console.print(f"[bold purple]Rendering {len(result.highlights[:2])} auto-detected highlights as 9:16 vertical shorts...[/bold purple]")
-            from stream_fusion.export.clipper import VerticalHighlightClipper
             clipper = VerticalHighlightClipper()
             shorts_dir = out_path / "shorts"
             for h_idx, hl in enumerate(result.highlights[:2]):
                 short_out = shorts_dir / f"{stream_id}_short_{h_idx+1}.mp4"
+                clip_start = hl.get("clip_start_sec", hl["timestamp_sec"])
+                clip_end = hl.get("clip_end_sec", hl["timestamp_sec"] + 10.0)
+
+                # Extract word timings for karaoke subtitles
+                hl_words = []
+                for seg in audio_segments:
+                    if seg.words and (seg.start_sec <= clip_end and seg.end_sec >= clip_start):
+                        for w in seg.words:
+                            if clip_start <= w.start <= clip_end:
+                                hl_words.append(w)
+
+                # Find facecam box from keyframe near this highlight
+                facecam_box = None
+                for kf in keyframes:
+                    if abs(kf.timestamp_sec - hl["timestamp_sec"]) <= 3.0 and kf.detected_objects:
+                        facecam_box = VisionProcessor.locate_streamer_facecam(kf.detected_objects)
+                        if facecam_box:
+                            break
+
                 try:
                     clipper.export_highlight_short(
                         video_path=media_input,
-                        start_sec=hl.get("clip_start_sec", hl["timestamp_sec"]),
-                        end_sec=hl.get("clip_end_sec", hl["timestamp_sec"] + 10.0),
+                        start_sec=clip_start,
+                        end_sec=clip_end,
                         output_path=short_out,
+                        words=hl_words if hl_words else None,
+                        facecam_box=facecam_box,
+                        burn_subtitles=bool(hl_words),
                     )
                     console.print(f"      [bold green][OK] Highlight Short #{h_idx+1}:[/bold green] {short_out.resolve()}")
                 except Exception as e:
                     console.print(f"      [yellow]Shorts export skipped: {e}[/yellow]")
 
         return result
+
+    def run_chunked(
+        self,
+        media_input: Path,
+        chunk_duration_sec: float = 1800.0,
+        chat_input: Optional[Path] = None,
+        output_dir: Optional[Path] = None,
+        total_duration_sec: Optional[float] = None,
+        latency_offset: Optional[float] = None,
+    ) -> List[StreamAnalysisResult]:
+        """Processes a long VOD stream in sequential chunks."""
+        out_path = output_dir or self.config.storage.output_dir
+        out_path.mkdir(parents=True, exist_ok=True)
+        
+        # Estimate duration if not provided
+        est_duration = total_duration_sec or 3600.0
+        num_chunks = max(1, int((est_duration + chunk_duration_sec - 1) // chunk_duration_sec))
+        console.print(f"[bold cyan]Chunked Processing:[/bold cyan] {num_chunks} chunks of {chunk_duration_sec:.0f}s each")
+
+        results = []
+        for i in range(num_chunks):
+            chunk_start = i * chunk_duration_sec
+            chunk_out = out_path / f"chunk_{i:03d}"
+            console.print(f"[bold yellow]Processing Chunk {i+1}/{num_chunks} [{chunk_start:.0f}s - {chunk_start+chunk_duration_sec:.0f}s][/bold yellow]")
+            res = self.run(
+                media_input=media_input,
+                chat_input=chat_input,
+                output_dir=chunk_out,
+                duration_sec=chunk_duration_sec,
+                latency_offset=latency_offset,
+            )
+            results.append(res)
+        return results

@@ -18,12 +18,17 @@ class VisionConfig(BaseModel):
     device: str = "cuda"
     sample_interval_sec: float = 2.0
     ocr_enabled: bool = True
+    object_detection_enabled: bool = True
 
 
 class ChatConfig(BaseModel):
     latency_offset_sec: float = Field(
         default=4.5,
         description="Broadcast delay offset: T_event = T_chat - latency_offset_sec"
+    )
+    auto_calibrate_latency: bool = Field(
+        default=True,
+        description="Whether to automatically calibrate latency offset via cross-correlation"
     )
     bucket_window_sec: float = Field(
         default=2.0,
@@ -42,3 +47,7 @@ class StreamFusionConfig(BaseModel):
     vision: VisionConfig = Field(default_factory=VisionConfig)
     chat: ChatConfig = Field(default_factory=ChatConfig)
     storage: StorageConfig = Field(default_factory=StorageConfig)
+    chunk_duration_sec: Optional[float] = Field(
+        default=None,
+        description="Optional duration in seconds to process stream in chunks (e.g. 1800 for 30m chunks)"
+    )

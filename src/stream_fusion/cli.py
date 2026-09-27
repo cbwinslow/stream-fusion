@@ -28,18 +28,38 @@ def process(
     chat: Optional[Path] = typer.Option(None, "--chat", "-c", help="Path to Twitch/YouTube chat replay JSON"),
     output_dir: Path = typer.Option(Path("./output"), "--out", "-o", help="Output directory"),
     duration: Optional[float] = typer.Option(None, "--duration", "-d", help="Limit analysis to N seconds"),
+    latency_offset: Optional[float] = typer.Option(None, "--latency-offset", "-l", help="Manual broadcast delay offset in seconds"),
+    auto_latency: bool = typer.Option(True, "--auto-latency/--no-auto-latency", help="Automatically calibrate broadcast latency via cross-correlation"),
+    chunk_duration: Optional[float] = typer.Option(None, "--chunk-duration", help="Chunk duration in seconds for processing long streams in chunks"),
 ):
     """Run full multimodal grounding on a video VOD and chat replay."""
     console.print(f"[bold purple]StreamFusion Pipeline[/bold purple]: Processing {video.name}")
     config = StreamFusionConfig()
+    config.chat.auto_calibrate_latency = auto_latency
+    if latency_offset is not None:
+        config.chat.latency_offset_sec = latency_offset
     pipeline = StreamPipeline(config=config)
-    result = pipeline.run(
-        media_input=video,
-        chat_input=chat,
-        output_dir=output_dir,
-        duration_sec=duration,
-    )
-    console.print(f"[bold green][OK] Analysis Complete for {result.stream_id}![/bold green]")
+
+    if chunk_duration is not None and chunk_duration > 0:
+        results = pipeline.run_chunked(
+            media_input=video,
+            chunk_duration_sec=chunk_duration,
+            chat_input=chat,
+            output_dir=output_dir,
+            total_duration_sec=duration,
+            latency_offset=latency_offset,
+        )
+        console.print(f"[bold green][OK] Chunked Analysis Complete: {len(results)} chunks processed![/bold green]")
+    else:
+        result = pipeline.run(
+            media_input=video,
+            chat_input=chat,
+            output_dir=output_dir,
+            duration_sec=duration,
+            latency_offset=latency_offset,
+            auto_calibrate_latency=auto_latency,
+        )
+        console.print(f"[bold green][OK] Analysis Complete for {result.stream_id}![/bold green]")
 
 
 @app.command()
