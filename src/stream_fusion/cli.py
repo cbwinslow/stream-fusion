@@ -160,7 +160,7 @@ def demo(
         top_emote = list(s.dominant_emotes.keys())[0] if s.dominant_emotes else "-"
         table.add_row(
             f"{s.start_sec:.1f} - {s.end_sec:.1f}",
-            s.streamer_transcript or "—",
+            s.streamer_transcript or "-",
             s.visual_description[:30] + "...",
             f"{s.chat_velocity_per_sec:.1f} msg/s",
             top_emote,
