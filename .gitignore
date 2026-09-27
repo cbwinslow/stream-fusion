@@ -33,6 +33,7 @@ venv.bak/
 
 # Caches & Models
 cache/
+cache_*/
 output/
 output_*/
 sample_*
