@@ -57,3 +57,69 @@ def test_cli_sponsor():
     assert "Sponsor Impact Analysis" in result.output
     assert "Brand Attention Score" in result.output
 
+
+def test_cli_audit_commands(tmp_path: Path):
+    db_file = tmp_path / "test_audit.db"
+
+    # 1. Audit help
+    res_help = runner.invoke(app, ["audit", "--help"])
+    assert res_help.exit_code == 0
+    assert "benchmark" in res_help.output
+    assert "history" in res_help.output
+    assert "compare" in res_help.output
+
+    # 2. History on empty db
+    res_hist_empty = runner.invoke(app, ["audit", "history", "--db", str(db_file)])
+    assert res_hist_empty.exit_code == 0
+    assert "No audit" in res_hist_empty.output
+
+    # 3. Populate store with two test runs and test history + compare
+    from stream_fusion.monitoring.audit import AuditStore, AuditRunRecord, StageTelemetry
+    store = AuditStore(db_path=db_file)
+
+    st_base = {"demux": StageTelemetry(stage_name="demux", duration_sec=2.0, start_time_iso="", end_time_iso="", ram_mb_peak=100.0, vram_mb_peak=0.0)}
+    rec_base = AuditRunRecord(
+        run_id="run_base",
+        git_commit="abc123",
+        git_dirty=False,
+        timestamp="2026-09-27T16:00:00Z",
+        stream_id="stream_test",
+        media_duration_sec=60.0,
+        total_pipeline_duration_sec=10.0,
+        overall_real_time_factor=0.166,
+        stages=st_base,
+        quality_metrics={"chat_count": 100},
+        status="SUCCESS",
+    )
+    store.record_run(rec_base, set_as_baseline=True)
+
+    st_cur = {"demux": StageTelemetry(stage_name="demux", duration_sec=3.5, start_time_iso="", end_time_iso="", ram_mb_peak=150.0, vram_mb_peak=0.0)}
+    rec_cur = AuditRunRecord(
+        run_id="run_current",
+        git_commit="def456",
+        git_dirty=True,
+        timestamp="2026-09-27T16:10:00Z",
+        stream_id="stream_test",
+        media_duration_sec=60.0,
+        total_pipeline_duration_sec=14.0,
+        overall_real_time_factor=0.233,
+        stages=st_cur,
+        quality_metrics={"chat_count": 100},
+        status="SUCCESS",
+    )
+    store.record_run(rec_cur, set_as_baseline=False)
+
+    # Test history
+    res_hist = runner.invoke(app, ["audit", "history", "--db", str(db_file)])
+    assert res_hist.exit_code == 0
+    assert "run_base" in res_hist.output
+    assert "run_current" in res_hist.output
+    assert "BASELINE" in res_hist.output
+
+    # Test compare
+    res_comp = runner.invoke(app, ["audit", "compare", "baseline", "run_current", "--db", str(db_file)])
+    assert res_comp.exit_code == 0
+    assert "Audit Run Comparison" in res_comp.output
+    assert "Total Pipeline Duration" in res_comp.output
+
+

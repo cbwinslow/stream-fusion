@@ -47,6 +47,8 @@ voiceprints.json
 *.pt
 *.bin
 *.onnx
+audit.db
+benchmark_output/
 
 # IDE & OS
 .vscode/

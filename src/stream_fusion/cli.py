@@ -426,6 +426,276 @@ def query_claims(
         console.print(s_table)
 
 
+
+# ---------------------------------------------------------------------------
+# Continuous Benchmarking, Telemetry & Auditing Subcommands (Spec 15)
+# ---------------------------------------------------------------------------
+audit_app = typer.Typer(
+    name="audit",
+    help="Continuous Benchmarking, Telemetry, and Auditing Commands",
+    no_args_is_help=True,
+)
+app.add_typer(audit_app, name="audit")
+
+
+@audit_app.command(name="benchmark")
+def audit_benchmark(
+    video: Path = typer.Option(Path("./asmon_sample_60s.mp4"), "--video", "-v", help="Path to sample VOD video file"),
+    chat: Optional[Path] = typer.Option(Path("./sample_asmon_chat.json"), "--chat", "-c", help="Path to sample chat replay JSON"),
+    output_dir: Path = typer.Option(Path("./benchmark_output"), "--out", "-o", help="Output directory for benchmark artifacts"),
+    duration: Optional[float] = typer.Option(60.0, "--duration", "-d", help="Max duration in seconds"),
+    set_baseline: bool = typer.Option(False, "--set-baseline", help="Set this run as the active baseline"),
+    db_path: Path = typer.Option(Path("./audit.db"), "--db", help="Path to SQLite audit database"),
+):
+    """Run benchmark suite on standard sample, recording telemetry & regression checks."""
+    if not video.exists():
+        console.print(f"[bold red]Error:[/bold red] Benchmark video file not found: {video}")
+        raise typer.Exit(code=1)
+
+    console.print(f"[bold purple]StreamFusion Continuous Benchmark[/bold purple]: {video.name}")
+    from stream_fusion.monitoring.telemetry import TelemetryCollector
+    from stream_fusion.monitoring.audit import (
+        AuditStore,
+        AuditRunRecord,
+        RegressionComparator,
+        StageTelemetry,
+        get_git_info,
+    )
+    from datetime import datetime, timezone
+
+    telemetry = TelemetryCollector()
+    config = StreamFusionConfig()
+    pipeline = StreamPipeline(config=config)
+
+    effective_chat = chat if (chat and chat.exists()) else None
+    result = pipeline.run(
+        media_input=video,
+        chat_input=effective_chat,
+        output_dir=output_dir,
+        duration_sec=duration,
+        telemetry=telemetry,
+    )
+
+    git_commit, git_dirty = get_git_info()
+    effective_media_dur = duration or result.metadata.get("duration_sec", 60.0)
+    total_dur = telemetry.get_total_duration()
+    overall_rtf = round(total_dur / max(effective_media_dur, 0.001), 3)
+
+    stages = {
+        name: StageTelemetry(**data) for name, data in telemetry.stages.items()
+    }
+
+    record = AuditRunRecord(
+        run_id=telemetry.run_id,
+        git_commit=git_commit,
+        git_dirty=git_dirty,
+        timestamp=datetime.now(timezone.utc).isoformat(),
+        stream_id=video.stem,
+        media_duration_sec=effective_media_dur,
+        total_pipeline_duration_sec=total_dur,
+        overall_real_time_factor=overall_rtf,
+        stages=stages,
+        quality_metrics=telemetry.quality_metrics,
+        status="SUCCESS",
+    )
+
+    store = AuditStore(db_path=db_path)
+    baseline = store.get_baseline()
+
+    if baseline and not set_baseline:
+        comparator = RegressionComparator()
+        alerts, recs = comparator.compare_runs(record, baseline)
+        record.regressions_detected = alerts
+        record.recommendations = recs
+
+    store.record_run(record, set_as_baseline=set_baseline)
+
+    # Render summary table
+    table = Table(title=f"Benchmark Telemetry Report: {record.run_id}")
+    table.add_column("Stage / Metric", style="cyan")
+    table.add_column("Duration (s)", justify="right", style="white")
+    table.add_column("RAM Peak (MB)", justify="right", style="magenta")
+    table.add_column("Status", style="green")
+
+    for s_name, s_data in record.stages.items():
+        table.add_row(
+            s_name,
+            f"{s_data.duration_sec:.2f}",
+            f"{s_data.ram_mb_peak:.1f}",
+            s_data.status,
+        )
+
+    table.add_section()
+    table.add_row("Total Pipeline", f"{record.total_pipeline_duration_sec:.2f}", "-", "SUCCESS")
+    table.add_row(
+        "Real-Time Factor (RTF)",
+        f"{record.overall_real_time_factor:.3f}x",
+        "-",
+        "[bold green]FAST[/bold green]" if record.overall_real_time_factor < 1.0 else "[bold yellow]SLOW[/bold yellow]",
+    )
+    console.print(table)
+
+    if set_baseline:
+        console.print(f"[bold green]Registered {record.run_id} as the new ACTIVE BASELINE.[/bold green]")
+    elif baseline:
+        if record.regressions_detected:
+            console.print(f"[bold red]WARNING: {len(record.regressions_detected)} REGRESSION(S) DETECTED vs baseline {baseline.run_id}:[/bold red]")
+            for alert in record.regressions_detected:
+                console.print(f"  - [{alert.severity}] {alert.description}")
+            if record.recommendations:
+                console.print("[bold yellow]Recommendations:[/bold yellow]")
+                for rec in record.recommendations:
+                    console.print(f"  * {rec}")
+        else:
+            console.print(f"[bold green]No regressions detected against baseline {baseline.run_id}![/bold green]")
+
+
+@audit_app.command(name="history")
+def audit_history(
+    limit: int = typer.Option(10, "--limit", "-n", help="Number of recent runs to display"),
+    db_path: Path = typer.Option(Path("./audit.db"), "--db", help="Path to SQLite audit database"),
+):
+    """List execution history and benchmarks from the audit store."""
+    if not db_path.exists():
+        console.print(f"[yellow]No audit database found at {db_path}[/yellow]")
+        return
+
+    from stream_fusion.monitoring.audit import AuditStore
+    store = AuditStore(db_path=db_path)
+    runs = store.get_recent_runs(limit=limit)
+    baseline = store.get_baseline()
+    baseline_id = baseline.run_id if baseline else None
+
+    if not runs:
+        console.print("[yellow]No audit runs recorded yet.[/yellow]")
+        return
+
+    table = Table(title=f"Audit History (Last {len(runs)} Runs)")
+    table.add_column("Run ID", style="cyan")
+    table.add_column("Git Commit", style="white")
+    table.add_column("Timestamp", style="dim")
+    table.add_column("Duration", justify="right", style="white")
+    table.add_column("RTF", justify="right", style="magenta")
+    table.add_column("Regressions", justify="right")
+    table.add_column("Status", style="green")
+
+    for r in runs:
+        is_base = " [bold green](BASELINE)[/bold green]" if r.run_id == baseline_id else ""
+        n_reg = len(r.regressions_detected)
+        reg_style = "[red]" if n_reg > 0 else "[green]"
+        table.add_row(
+            f"{r.run_id}{is_base}",
+            f"{r.git_commit}{'*' if r.git_dirty else ''}",
+            r.timestamp[:19].replace("T", " "),
+            f"{r.total_pipeline_duration_sec:.1f}s",
+            f"{r.overall_real_time_factor:.3f}x",
+            f"{reg_style}{n_reg}[/]",
+            r.status,
+        )
+
+    console.print(table)
+
+
+@audit_app.command(name="compare")
+def audit_compare(
+    run_id_a: str = typer.Argument(..., help="Baseline run ID (or 'baseline' to use the active baseline)"),
+    run_id_b: Optional[str] = typer.Argument(None, help="Comparison run ID (defaults to latest recorded run)"),
+    db_path: Path = typer.Option(Path("./audit.db"), "--db", help="Path to SQLite audit database"),
+):
+    """Compare performance and quality metrics between two audit runs."""
+    if not db_path.exists():
+        console.print(f"[yellow]No audit database found at {db_path}[/yellow]")
+        return
+
+    from stream_fusion.monitoring.audit import AuditStore, RegressionComparator
+    store = AuditStore(db_path=db_path)
+
+    if run_id_a.lower() == "baseline":
+        rec_a = store.get_baseline()
+        if not rec_a:
+            console.print("[bold red]Error:[/bold red] No active baseline found in audit database.")
+            raise typer.Exit(code=1)
+    else:
+        rec_a = store.get_run(run_id_a)
+        if not rec_a:
+            console.print(f"[bold red]Error:[/bold red] Run '{run_id_a}' not found.")
+            raise typer.Exit(code=1)
+
+    if run_id_b is None:
+        recent = store.get_recent_runs(limit=1)
+        if not recent:
+            console.print("[bold red]Error:[/bold red] No runs available for comparison.")
+            raise typer.Exit(code=1)
+        rec_b = recent[0]
+    else:
+        rec_b = store.get_run(run_id_b)
+        if not rec_b:
+            console.print(f"[bold red]Error:[/bold red] Run '{run_id_b}' not found.")
+            raise typer.Exit(code=1)
+
+    comparator = RegressionComparator()
+    alerts, recs = comparator.compare_runs(current=rec_b, baseline=rec_a)
+
+    console.print(f"[bold purple]Audit Run Comparison[/bold purple]: [cyan]{rec_a.run_id}[/cyan] (Baseline) vs [cyan]{rec_b.run_id}[/cyan] (Current)")
+
+    table = Table(title="Performance & Stage Breakdown Comparison")
+    table.add_column("Metric / Stage", style="cyan")
+    table.add_column(f"Baseline ({rec_a.run_id[:12]})", justify="right", style="white")
+    table.add_column(f"Current ({rec_b.run_id[:12]})", justify="right", style="white")
+    table.add_column("Diff", justify="right")
+
+    # Total duration
+    diff_tot = (rec_b.total_pipeline_duration_sec - rec_a.total_pipeline_duration_sec) / max(rec_a.total_pipeline_duration_sec, 0.001)
+    d_style = "[red]+" if diff_tot > 0.05 else ("[green]" if diff_tot < -0.05 else "[dim]")
+    table.add_row(
+        "Total Pipeline Duration",
+        f"{rec_a.total_pipeline_duration_sec:.2f}s",
+        f"{rec_b.total_pipeline_duration_sec:.2f}s",
+        f"{d_style}{diff_tot:+.1%}[/]",
+    )
+
+    # RTF
+    diff_rtf = (rec_b.overall_real_time_factor - rec_a.overall_real_time_factor) / max(rec_a.overall_real_time_factor, 0.001)
+    table.add_row(
+        "Real-Time Factor",
+        f"{rec_a.overall_real_time_factor:.3f}x",
+        f"{rec_b.overall_real_time_factor:.3f}x",
+        f"{diff_rtf:+.1%}",
+    )
+
+    table.add_section()
+    all_stages = sorted(set(list(rec_a.stages.keys()) + list(rec_b.stages.keys())))
+    for st in all_stages:
+        dur_a = rec_a.stages[st].duration_sec if st in rec_a.stages else 0.0
+        dur_b = rec_b.stages[st].duration_sec if st in rec_b.stages else 0.0
+        if dur_a > 0:
+            diff_st = (dur_b - dur_a) / dur_a
+            diff_str = f"{diff_st:+.1%}"
+            st_color = "[red]" if diff_st > 0.25 else ("[green]" if diff_st < -0.10 else "[dim]")
+        else:
+            diff_str = "NEW"
+            st_color = "[cyan]"
+        table.add_row(
+            f"Stage: {st}",
+            f"{dur_a:.2f}s" if dur_a else "-",
+            f"{dur_b:.2f}s" if dur_b else "-",
+            f"{st_color}{diff_str}[/]",
+        )
+
+    console.print(table)
+
+    if alerts:
+        console.print(f"[bold red]WARNING: {len(alerts)} Regression(s) Detected![/bold red]")
+        for a in alerts:
+            console.print(f"  - [{a.severity}] {a.description}")
+        if recs:
+            console.print("[bold yellow]Recommendations:[/bold yellow]")
+            for r in recs:
+                console.print(f"  * {r}")
+    else:
+        console.print("[bold green]Zero regressions detected. Current run matches or exceeds baseline performance![/bold green]")
+
+
 if __name__ == "__main__":
     app()
 
