@@ -185,6 +185,13 @@ def export_html_report(result: StreamAnalysisResult, output_path: Path):
         sig_parts = []
         if s.is_spike_moment:
             sig_parts.append('<span class="spike-tag">HYPE / SPIKE</span>')
+        if s.agreement_score is not None:
+            if s.agreement_score >= 0.33:
+                sig_parts.append(f'<div style="margin-top:4px;"><span class="badge" style="background:#2ea44f;">BASED ({s.agreement_score:+.2f})</span></div>')
+            elif s.agreement_score <= -0.33:
+                sig_parts.append(f'<div style="margin-top:4px;"><span class="badge" style="background:#cf222e;">CAP / L ({s.agreement_score:+.2f})</span></div>')
+            else:
+                sig_parts.append(f'<div style="margin-top:4px;"><span class="badge" style="background:#6e7681;">DIVIDED ({s.agreement_score:+.2f})</span></div>')
         sig_html = "".join(sig_parts) if sig_parts else ""
 
         rows.append(

@@ -15,6 +15,7 @@ from stream_fusion.chat.analyzer import ChatAnalyzer
 from stream_fusion.chat.calibrator import LatencyCalibrator
 from stream_fusion.fusion.matrix import FusionEngine
 from stream_fusion.export.html_report import export_html_report
+from stream_fusion.export.dataset import export_to_parquet, export_training_triples_jsonl
 
 console = Console()
 
@@ -129,5 +130,34 @@ class StreamPipeline:
         html_output = out_path / f"{stream_id}_grounding_report.html"
         export_html_report(result, html_output)
         console.print(f"[bold green][OK] Grounding Report Generated:[/bold green] {html_output.resolve()}")
+
+        # Export Columnar Parquet
+        parquet_output = out_path / f"{stream_id}_matrix.parquet"
+        export_to_parquet(result, parquet_output)
+        console.print(f"[bold green][OK] Columnar Parquet Matrix:[/bold green] {parquet_output.resolve()}")
+
+        # Export Hugging Face Training Triples
+        jsonl_output = out_path / f"{stream_id}_training_triples.jsonl"
+        export_training_triples_jsonl(result, jsonl_output)
+        console.print(f"[bold green][OK] Multimodal Training Triples:[/bold green] {jsonl_output.resolve()}")
+
+        # Auto-render top highlights as 9:16 vertical shorts
+        if result.highlights:
+            console.print(f"[bold purple]Rendering {len(result.highlights[:2])} auto-detected highlights as 9:16 vertical shorts...[/bold purple]")
+            from stream_fusion.export.clipper import VerticalHighlightClipper
+            clipper = VerticalHighlightClipper()
+            shorts_dir = out_path / "shorts"
+            for h_idx, hl in enumerate(result.highlights[:2]):
+                short_out = shorts_dir / f"{stream_id}_short_{h_idx+1}.mp4"
+                try:
+                    clipper.export_highlight_short(
+                        video_path=media_input,
+                        start_sec=hl.get("clip_start_sec", hl["timestamp_sec"]),
+                        end_sec=hl.get("clip_end_sec", hl["timestamp_sec"] + 10.0),
+                        output_path=short_out,
+                    )
+                    console.print(f"      [bold green][OK] Highlight Short #{h_idx+1}:[/bold green] {short_out.resolve()}")
+                except Exception as e:
+                    console.print(f"      [yellow]Shorts export skipped: {e}[/yellow]")
 
         return result

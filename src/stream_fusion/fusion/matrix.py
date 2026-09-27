@@ -9,6 +9,10 @@ from stream_fusion.models.schemas import (
 )
 
 
+AGREEMENT_TOKENS = {"TRUE", "true", "based", "Based", "W", "w", "NODDERS", "real", "Facts", "facts", "Clap"}
+DISSENT_TOKENS = {"L", "l", "cap", "Cap", "cringe", "Cringe", "NOPERS", "weirdchamp", "???", "HUH", "huh"}
+
+
 class FusionEngine:
     """Combines extracted modalities into a unified temporal matrix."""
 
@@ -45,7 +49,7 @@ class FusionEngine:
         mean_vel = (
             sum(all_velocities) / len(all_velocities) if all_velocities else 1.0
         )
-        spike_threshold = max(2.0, mean_vel * 2.5)
+        spike_threshold = max(2.0, mean_vel * 2.2)
 
         current_visual_state: Optional[VisualKeyframe] = None
 
@@ -59,7 +63,6 @@ class FusionEngine:
             active_speakers = set()
 
             for seg in audio_segments:
-                # Check for temporal overlap: max(start1, start2) < min(end1, end2)
                 if max(start_sec, seg.start_sec) < min(end_sec, seg.end_sec):
                     active_speakers.add(seg.speaker_label)
                     if seg.speaker_label == "STREAMER":
@@ -97,10 +100,16 @@ class FusionEngine:
             # 4. Spike detection
             is_spike = vel >= spike_threshold
 
-            # 5. Agreement score: If streamer spoke and chat has high positive/negative alignment
+            # 5. Take Agreement Index: Ratio of agreement to dissent tokens
             agreement: Optional[float] = None
-            if streamer_texts and msg_count > 3:
-                agreement = sentiment
+            agree_count = sum(emotes.get(tok, 0) for tok in AGREEMENT_TOKENS)
+            dissent_count = sum(emotes.get(tok, 0) for tok in DISSENT_TOKENS)
+            total_eval = agree_count + dissent_count
+
+            if streamer_texts and total_eval > 0:
+                agreement = round((agree_count - dissent_count) / total_eval, 3)
+            elif streamer_texts and msg_count > 2:
+                agreement = round(sentiment, 3)
 
             slices.append(
                 FusionSlice(
@@ -136,18 +145,32 @@ class FusionEngine:
         )
 
     def _extract_highlights(self, slices: List[FusionSlice]) -> List[Dict[str, object]]:
-        """Identifies peak moments based on chat spikes and speech triggers."""
+        """Identifies peak moments based on chat spikes, agreement extremes, and speech."""
         highlights = []
         for s in slices:
             if s.is_spike_moment:
+                # Determine audience alignment label
+                alignment_label = "NEUTRAL"
+                if s.agreement_score is not None:
+                    if s.agreement_score >= 0.33:
+                        alignment_label = "AUDIENCE_ALIGNED"
+                    elif s.agreement_score <= -0.33:
+                        alignment_label = "AUDIENCE_REVOLT"
+                    else:
+                        alignment_label = "DIVIDED"
+
                 highlights.append(
                     {
                         "timestamp_sec": s.start_sec,
+                        "clip_start_sec": max(0.0, s.start_sec - 4.0),
+                        "clip_end_sec": s.end_sec + 8.0,
                         "reason": "Audience Reaction Spike",
                         "velocity": s.chat_velocity_per_sec,
                         "dominant_emotes": s.dominant_emotes,
                         "streamer_said": s.streamer_transcript,
                         "screen_context": s.visual_description,
+                        "audience_alignment": alignment_label,
+                        "agreement_score": s.agreement_score,
                     }
                 )
         return highlights

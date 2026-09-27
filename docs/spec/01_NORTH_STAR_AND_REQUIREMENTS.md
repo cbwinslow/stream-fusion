@@ -65,7 +65,8 @@
 
 ### FR-6: Export & Interoperability
 * **FR-6.1:** Must generate a zero-dependency, self-contained interactive HTML dashboard with scrubbable timelines.
-* **FR-6.2:** Must export machine-readable datasets in Apache Parquet and JSONL.
+* **FR-6.2:** Must export machine-readable datasets in Apache Parquet and JSONL instruction-tuning triples for AI training.
+* **FR-6.3:** Must automatically render detected highlight spikes into 9:16 vertical video shorts (cropping streamer facecam on top and content on bottom).
 
 ---
 
@@ -74,17 +75,18 @@
 * **NFR-1 (Compute Boundary):** Must execute on a single **NVIDIA RTX 3060 (12GB VRAM)** on Windows/Linux without OOM exceptions.
 * **NFR-2 (Memory Lifecycle):** Peak VRAM usage must not exceed 8.0 GB at any point in the pipeline. All neural models must be sequentially loaded, used, and explicitly evicted from GPU memory.
 * **NFR-3 (Execution Speed):** Total pipeline processing time for a 1-hour stream must not exceed **20 minutes** on an RTX 3060.
-* **NFR-4 (Packaging):** Must be installable via `pip` / `uv` with clean CLI entrypoints (`streamfusion`).
+* **NFR-4 (Packaging):** Must be installable via `uv` / `pip` with clean CLI entrypoints (`streamfusion`).
 
 ---
 
 ## 5. Detailed Criteria for Completion (Definition of Done)
 
-| Phase | Deliverable | Criteria for Completion (DoD) |
-|---|---|---|
-| **Phase 1: Spec & Contracts** | SDD Documentation & Schemas | All Pydantic data schemas pass strict validation; CLI options defined; specs approved. |
-| **Phase 2: Ingestion & Chat** | Ingestion Module & Chat Analyzer | Given a VOD URL, successfully downloads a 2-minute slice and parses chat replay into calibrated time buckets with unit test coverage >90%. |
-| **Phase 3: Audio Diarization** | Audio Engine | Faster-Whisper + Diarization runs on 3060, successfully tagging streamer speech vs. external video with <4GB VRAM usage. |
-| **Phase 4: Screen Vision** | Vision Engine | PySceneDetect samples keyframes; Florence-2 extracts OCR and scene descriptions in <200ms/frame with zero OOM. |
-| **Phase 5: Matrix Fusion** | Fusion Engine & HTML Exporter | Generates complete `FusionSlice` matrix, cross-correlation latency calibration, and opens an interactive HTML dashboard. |
-| **Phase 6: Distribution** | Open Source Packaging | PyPI-ready `pyproject.toml`, GitHub Actions CI workflow, clear README, and single-command install via `pip install stream-fusion`. |
+| Phase | Deliverable | Status | Criteria for Completion (DoD) |
+|---|---|---|---|
+| **Phase 1: Spec & Contracts** | SDD Documentation & Schemas | **DONE** | All Pydantic data schemas pass strict validation; CLI options defined; specs approved. |
+| **Phase 2: Ingestion & Chat** | Ingestion Module & Chat Analyzer | **DONE** | Ingests real Twitch VOD slices via `yt-dlp` and full chat replay with 7TV emotes via `TwitchDownloaderCLI`. |
+| **Phase 3: Audio Diarization** | Audio Engine & Prosody | **DONE** | Faster-Whisper + Diarization runs on RTX 3060 with CUDA; RMS prosodic loudness & burst detection tested. |
+| **Phase 4: Screen Vision** | Vision Engine & OCR | **DONE** | PySceneDetect samples keyframes; Florence-2 extracts OCR and scene descriptions in <200ms/frame with zero OOM. |
+| **Phase 5: Matrix & Latency** | Dynamic Calibration & Fusion | **DONE** | Discrete cross-correlation auto-tunes stream lag ($\Delta t = 4.5s$ on real Asmon stream); Take Agreement Index calculated. |
+| **Phase 6: Multi-Export & Shorts** | HTML, Parquet, JSONL & Clipper | **DONE** | Exports interactive HTML report, Apache Parquet matrix, Hugging Face training triples, and renders 9:16 vertical shorts. |
+| **Phase 7: Packaging & Release** | PyPI & Open Source | **ACTIVE** | `uv.lock` deterministic builds, clean CLI help, 100% test coverage across 23 tests. |

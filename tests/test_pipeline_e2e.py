@@ -44,3 +44,11 @@ def test_stream_pipeline_end_to_end(tmp_path: Path):
     wav_file = tmp_path / "e2e_output" / "sample_test_vod_audio_16k.wav"
     assert wav_file.exists()
     assert wav_file.stat().st_size > 10000
+
+    parquet_file = tmp_path / "e2e_output" / "sample_test_vod_matrix.parquet"
+    assert parquet_file.exists()
+    assert parquet_file.stat().st_size > 500
+
+    jsonl_file = tmp_path / "e2e_output" / "sample_test_vod_training_triples.jsonl"
+    assert jsonl_file.exists()
+    assert jsonl_file.stat().st_size > 100
