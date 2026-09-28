@@ -1,0 +1,58 @@
+{
+  "properties": {
+    "task_type": {
+      "title": "Task Type",
+      "type": "string"
+    },
+    "media_path": {
+      "title": "Media Path",
+      "type": "string"
+    },
+    "output_path": {
+      "title": "Output Path",
+      "type": "string"
+    },
+    "config": {
+      "additionalProperties": true,
+      "title": "Config",
+      "type": "object"
+    },
+    "timeout_sec": {
+      "default": 300.0,
+      "title": "Timeout Sec",
+      "type": "number"
+    },
+    "trace_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Trace Id"
+    },
+    "extra_payload": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extra Payload"
+    }
+  },
+  "required": [
+    "task_type",
+    "media_path",
+    "output_path"
+  ],
+  "title": "WorkerTaskInput",
+  "type": "object"
+}

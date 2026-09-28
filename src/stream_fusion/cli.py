@@ -32,11 +32,17 @@ def process(
     auto_latency: bool = typer.Option(True, "--auto-latency/--no-auto-latency", help="Automatically calibrate broadcast latency via cross-correlation"),
     chunk_duration: Optional[float] = typer.Option(None, "--chunk-duration", help="Chunk duration in seconds for processing long streams in chunks"),
     cache_dir: Optional[Path] = typer.Option(None, "--cache-dir", help="Directory for stateful resumption checkpoints"),
+    isolate_workers: bool = typer.Option(False, "--isolate-workers", help="Run Whisper and Florence in isolated subprocesses for zero VRAM leakage"),
+    bounded_buffer: bool = typer.Option(False, "--bounded-buffer", help="Process frames in sliding windows and immediately purge temporary image files"),
+    window_size: float = typer.Option(30.0, "--window-size", help="Window duration in seconds for bounded keyframe buffering"),
 ):
     """Run full multimodal grounding on a video VOD and chat replay."""
     console.print(f"[bold purple]StreamFusion Pipeline[/bold purple]: Processing {video.name}")
     config = StreamFusionConfig()
     config.chat.auto_calibrate_latency = auto_latency
+    config.execution.isolate_gpu_workers = isolate_workers
+    config.execution.bounded_buffering = bounded_buffer
+    config.execution.window_size_sec = window_size
     if latency_offset is not None:
         config.chat.latency_offset_sec = latency_offset
     pipeline = StreamPipeline(config=config)

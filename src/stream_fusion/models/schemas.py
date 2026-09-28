@@ -1,6 +1,6 @@
 """Pydantic data models for StreamFusion data contracts."""
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -347,6 +347,19 @@ class AdaptiveTermEntry(BaseModel):
     peak_z_score: float = 3.0
     decay_half_life_days: float = 14.0
     status: str = "ACTIVE"
+
+
+# --- Spec 18: Subprocess Worker Isolation & Bounded Buffering ---
+
+class WorkerTaskInput(BaseModel):
+    task_type: str
+    media_path: str
+    output_path: str
+    config: Dict[str, Any] = Field(default_factory=dict)
+    timeout_sec: float = 300.0
+    trace_id: Optional[str] = None
+    extra_payload: Optional[Dict[str, Any]] = None
+
 
 
 

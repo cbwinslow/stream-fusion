@@ -20,6 +20,8 @@ from stream_fusion.export.clipper import VerticalHighlightClipper
 from contextlib import nullcontext
 from stream_fusion.checkpoint.manager import CheckpointManager
 from stream_fusion.monitoring.telemetry import TelemetryCollector
+from stream_fusion.workers.isolation import WorkerIsolationManager
+from stream_fusion.workers.bounded_buffer import BoundedFrameBuffer
 
 console = Console()
 
@@ -89,6 +91,35 @@ class StreamPipeline:
             if cached_audio is not None:
                 audio_segments = cached_audio
                 console.print(f"      [green][RESUMED][/green] Loaded {len(audio_segments)} audio segments from checkpoint")
+            elif self.config.execution.isolate_gpu_workers:
+                worker_mgr = WorkerIsolationManager()
+                trans_cfg = {
+                    "whisper_model": self.config.audio.whisper_model,
+                    "device": self.config.audio.device,
+                    "compute_type": self.config.audio.compute_type,
+                }
+                audio_segments = worker_mgr.transcribe_isolated(
+                    wav_path, config=trans_cfg, timeout_sec=self.config.execution.worker_timeout_sec
+                )
+                if s_offset > 0:
+                    for seg in audio_segments:
+                        seg.start_sec = round(seg.start_sec + s_offset, 3)
+                        seg.end_sec = round(seg.end_sec + s_offset, 3)
+                        if seg.words:
+                            for w in seg.words:
+                                w.start = round(w.start + s_offset, 3)
+                                w.end = round(w.end + s_offset, 3)
+
+                diar_cfg = {
+                    "hf_token": self.config.audio.hf_token,
+                    "device": self.config.audio.device,
+                }
+                audio_segments = worker_mgr.diarize_isolated(
+                    wav_path, audio_segments, config=diar_cfg, timeout_sec=self.config.execution.worker_timeout_sec
+                )
+                if checkpoint_mgr:
+                    checkpoint_mgr.save_chunk_audio(c_idx, audio_segments)
+                console.print(f"      [green][OK][/green] Processed {len(audio_segments)} diarized audio segments (isolated worker)")
             else:
                 transcriber = AudioTranscriber(
                     model_size=self.config.audio.whisper_model,
@@ -131,6 +162,65 @@ class StreamPipeline:
             if cached_vision is not None:
                 keyframes = cached_vision
                 console.print(f"      [green][RESUMED][/green] Loaded {len(keyframes)} visual scene keyframes from checkpoint")
+            elif self.config.execution.bounded_buffering:
+                buffer = BoundedFrameBuffer(demuxer=self.demuxer)
+                worker_mgr = WorkerIsolationManager() if self.config.execution.isolate_gpu_workers else None
+                v_cfg = {
+                    "backend": "florence" if self.config.vision.device == "cuda" else "fallback",
+                    "device": self.config.vision.device,
+                    "detect_objects": self.config.vision.object_detection_enabled,
+                }
+
+                def _frame_callback(f_items, w_start, w_end):
+                    if worker_mgr:
+                        return worker_mgr.process_keyframes_isolated(
+                            f_items, config=v_cfg, timeout_sec=self.config.execution.worker_timeout_sec
+                        )
+                    else:
+                        vp = VisionProcessor(
+                            backend=v_cfg["backend"],
+                            device=v_cfg["device"],
+                            detect_objects=v_cfg["detect_objects"],
+                        )
+                        res = [
+                            vp.process_frame(Path(item["path"]), item["timestamp_sec"], item["frame_index"])
+                            for item in f_items
+                        ]
+                        vp.unload()
+                        return res
+
+                keyframes = buffer.process_stream_windowed(
+                    media_input,
+                    total_duration_sec=effective_duration,
+                    sample_interval_sec=self.config.vision.sample_interval_sec,
+                    window_size_sec=self.config.execution.window_size_sec,
+                    frame_processor=_frame_callback,
+                    purge_on_complete=True,
+                )
+                if checkpoint_mgr:
+                    checkpoint_mgr.save_chunk_vision(c_idx, keyframes)
+                console.print(f"      [green][OK][/green] Parsed {len(keyframes)} visual scene keyframes (bounded buffer)")
+            elif self.config.execution.isolate_gpu_workers:
+                worker_mgr = WorkerIsolationManager()
+                v_cfg = {
+                    "backend": "florence" if self.config.vision.device == "cuda" else "fallback",
+                    "device": self.config.vision.device,
+                    "detect_objects": self.config.vision.object_detection_enabled,
+                }
+                frame_items = [
+                    {
+                        "path": str(f_path),
+                        "timestamp_sec": s_offset + (idx * self.config.vision.sample_interval_sec),
+                        "frame_index": idx + 1,
+                    }
+                    for idx, f_path in enumerate(frames)
+                ]
+                keyframes = worker_mgr.process_keyframes_isolated(
+                    frame_items, config=v_cfg, timeout_sec=self.config.execution.worker_timeout_sec
+                )
+                if checkpoint_mgr:
+                    checkpoint_mgr.save_chunk_vision(c_idx, keyframes)
+                console.print(f"      [green][OK][/green] Parsed {len(keyframes)} visual scene keyframes (isolated worker)")
             else:
                 vision_processor = VisionProcessor(
                     backend="florence" if self.config.vision.device == "cuda" else "fallback",

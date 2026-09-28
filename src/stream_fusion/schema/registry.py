@@ -51,6 +51,7 @@ class SchemaRegistry:
             "ReadAlongSegment",
             "SlangCandidate",
             "AdaptiveTermEntry",
+            "WorkerTaskInput",
         ]:
             if hasattr(model_schemas, name):
                 cls = getattr(model_schemas, name)

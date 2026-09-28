@@ -42,12 +42,33 @@ class StorageConfig(BaseModel):
     output_dir: Path = Path("./output")
 
 
+class ExecutionConfig(BaseModel):
+    isolate_gpu_workers: bool = Field(
+        default=False,
+        description="Whether to run Whisper and Florence in isolated child processes to reclaim VRAM"
+    )
+    bounded_buffering: bool = Field(
+        default=False,
+        description="Whether to use windowed frame extraction with immediate image purging"
+    )
+    window_size_sec: float = Field(
+        default=30.0,
+        description="Window size in seconds for bounded keyframe buffering"
+    )
+    worker_timeout_sec: float = Field(
+        default=600.0,
+        description="Timeout in seconds for isolated worker subprocesses"
+    )
+
+
 class StreamFusionConfig(BaseModel):
     audio: AudioConfig = Field(default_factory=AudioConfig)
     vision: VisionConfig = Field(default_factory=VisionConfig)
     chat: ChatConfig = Field(default_factory=ChatConfig)
     storage: StorageConfig = Field(default_factory=StorageConfig)
+    execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
     chunk_duration_sec: Optional[float] = Field(
         default=None,
         description="Optional duration in seconds to process stream in chunks (e.g. 1800 for 30m chunks)"
     )
+
