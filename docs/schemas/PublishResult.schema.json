@@ -1,0 +1,57 @@
+{
+  "properties": {
+    "package_id": {
+      "title": "Package Id",
+      "type": "string"
+    },
+    "platform": {
+      "title": "Platform",
+      "type": "string"
+    },
+    "status": {
+      "default": "PUBLISHED",
+      "title": "Status",
+      "type": "string"
+    },
+    "post_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Post Id"
+    },
+    "post_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Post Url"
+    },
+    "published_at": {
+      "format": "date-time",
+      "title": "Published At",
+      "type": "string"
+    },
+    "payload_snapshot": {
+      "additionalProperties": true,
+      "title": "Payload Snapshot",
+      "type": "object"
+    }
+  },
+  "required": [
+    "package_id",
+    "platform"
+  ],
+  "title": "PublishResult",
+  "type": "object"
+}

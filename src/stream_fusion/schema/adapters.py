@@ -1,5 +1,6 @@
 """Storage and Persistence Adapters: JSONL, SQLite JSON1, and Parquet Bridge (Spec 16)."""
 
+from contextlib import contextmanager
 import json
 from pathlib import Path
 import sqlite3
@@ -71,10 +72,14 @@ class SqliteJsonStore:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
-    def _get_connection(self) -> sqlite3.Connection:
+    @contextmanager
+    def _get_connection(self) -> Iterator[sqlite3.Connection]:
         conn = sqlite3.connect(str(self.db_path))
         conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            yield conn
+        finally:
+            conn.close()
 
     def _init_db(self) -> None:
         with self._get_connection() as conn:
@@ -110,6 +115,15 @@ class SqliteJsonStore:
 
     def insert_envelope(self, envelope: StreamFusionEnvelope) -> None:
         """Inserts a single envelope into the SQLite store."""
+        if hasattr(envelope.payload, "model_dump_json"):
+            payload_json = envelope.payload.model_dump_json()
+        elif hasattr(envelope.payload, "model_dump"):
+            payload_json = json.dumps(envelope.payload.model_dump(mode="json"))
+        elif envelope.payload is not None:
+            payload_json = json.dumps(envelope.payload)
+        else:
+            payload_json = "{}"
+
         with self._get_connection() as conn:
             conn.execute(
                 """
@@ -128,9 +142,7 @@ class SqliteJsonStore:
                     else str(envelope.event_type),
                     envelope.trace_id,
                     envelope.producer,
-                    json.dumps(envelope.payload)
-                    if envelope.payload is not None
-                    else "{}",
+                    payload_json,
                     envelope.telemetry.model_dump_json()
                     if envelope.telemetry
                     else None,
@@ -138,6 +150,8 @@ class SqliteJsonStore:
                 ),
             )
             conn.commit()
+
+    append_envelope = insert_envelope
 
     def insert_envelopes(self, envelopes: List[StreamFusionEnvelope]) -> int:
         """Batch inserts envelopes within a single transaction."""

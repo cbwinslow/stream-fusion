@@ -1,0 +1,49 @@
+{
+  "properties": {
+    "youtube_title": {
+      "title": "Youtube Title",
+      "type": "string"
+    },
+    "youtube_description": {
+      "title": "Youtube Description",
+      "type": "string"
+    },
+    "youtube_tags": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Youtube Tags",
+      "type": "array"
+    },
+    "tiktok_caption": {
+      "title": "Tiktok Caption",
+      "type": "string"
+    },
+    "tiktok_hashtags": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Tiktok Hashtags",
+      "type": "array"
+    },
+    "twitter_thread": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Twitter Thread",
+      "type": "array"
+    },
+    "hook_headline": {
+      "title": "Hook Headline",
+      "type": "string"
+    }
+  },
+  "required": [
+    "youtube_title",
+    "youtube_description",
+    "tiktok_caption",
+    "hook_headline"
+  ],
+  "title": "PlatformCopyBundle",
+  "type": "object"
+}

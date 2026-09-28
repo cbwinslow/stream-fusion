@@ -1,0 +1,80 @@
+{
+  "$defs": {
+    "NarrativeArc": {
+      "enum": [
+        "HOOK_BUILDUP_PAYOFF",
+        "INSTANT_CLIMAX_REACTION",
+        "HOT_TAKE_AND_DEBATE",
+        "SPONSOR_SHOWCASE"
+      ],
+      "title": "NarrativeArc",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "candidate_id": {
+      "title": "Candidate Id",
+      "type": "string"
+    },
+    "start_sec": {
+      "title": "Start Sec",
+      "type": "number"
+    },
+    "end_sec": {
+      "title": "End Sec",
+      "type": "number"
+    },
+    "duration_sec": {
+      "title": "Duration Sec",
+      "type": "number"
+    },
+    "peak_timestamp_sec": {
+      "title": "Peak Timestamp Sec",
+      "type": "number"
+    },
+    "highlight_score": {
+      "title": "Highlight Score",
+      "type": "number"
+    },
+    "chat_burst_zscore": {
+      "title": "Chat Burst Zscore",
+      "type": "number"
+    },
+    "primary_emotion": {
+      "default": "EXCITEMENT",
+      "title": "Primary Emotion",
+      "type": "string"
+    },
+    "narrative_arc": {
+      "$ref": "#/$defs/NarrativeArc",
+      "default": "HOOK_BUILDUP_PAYOFF"
+    },
+    "hook_text": {
+      "default": "",
+      "title": "Hook Text",
+      "type": "string"
+    },
+    "summary": {
+      "default": "",
+      "title": "Summary",
+      "type": "string"
+    },
+    "dominant_slang": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Dominant Slang",
+      "type": "array"
+    }
+  },
+  "required": [
+    "start_sec",
+    "end_sec",
+    "duration_sec",
+    "peak_timestamp_sec",
+    "highlight_score",
+    "chat_burst_zscore"
+  ],
+  "title": "ShortCandidate",
+  "type": "object"
+}

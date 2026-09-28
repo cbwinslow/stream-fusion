@@ -1,0 +1,84 @@
+{
+  "$defs": {
+    "CropLayout": {
+      "enum": [
+        "STACKED_CAM_CONTENT",
+        "FULL_CONTENT_PAN_SCAN",
+        "CAM_PIP"
+      ],
+      "title": "CropLayout",
+      "type": "string"
+    },
+    "SubtitleStylePreset": {
+      "enum": [
+        "KARAOKE_POP",
+        "CLEAN_MINIMAL",
+        "MEME_EMOTE"
+      ],
+      "title": "SubtitleStylePreset",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "crop_layout": {
+      "$ref": "#/$defs/CropLayout",
+      "default": "STACKED_CAM_CONTENT"
+    },
+    "facecam_box": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Facecam Box"
+    },
+    "content_box": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Content Box"
+    },
+    "subtitle_preset": {
+      "$ref": "#/$defs/SubtitleStylePreset",
+      "default": "KARAOKE_POP"
+    },
+    "highlight_word_color": {
+      "default": "&H0000FFFF",
+      "title": "Highlight Word Color",
+      "type": "string"
+    },
+    "burn_subtitles": {
+      "default": true,
+      "title": "Burn Subtitles",
+      "type": "boolean"
+    },
+    "audio_duck_music_db": {
+      "default": -12.0,
+      "title": "Audio Duck Music Db",
+      "type": "number"
+    },
+    "hook_duration_sec": {
+      "default": 3.0,
+      "title": "Hook Duration Sec",
+      "type": "number"
+    }
+  },
+  "title": "EditorialCutPlan",
+  "type": "object"
+}

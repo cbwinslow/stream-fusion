@@ -52,6 +52,13 @@ class SchemaRegistry:
             "SlangCandidate",
             "AdaptiveTermEntry",
             "WorkerTaskInput",
+            "ShortCandidate",
+            "EditorialCutPlan",
+            "ContentAuditReport",
+            "PlatformCopyBundle",
+            "ViralityScoreCard",
+            "ShortProductionPackage",
+            "PublishResult",
         ]:
             if hasattr(model_schemas, name):
                 cls = getattr(model_schemas, name)

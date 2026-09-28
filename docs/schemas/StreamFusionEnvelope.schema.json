@@ -72,6 +72,8 @@
         "SLANG_CANDIDATE_DETECTED",
         "LEXICON_UPDATED",
         "AUDIT_BENCHMARK",
+        "SHORT_PRODUCED",
+        "SHORT_PUBLISHED",
         "PIPELINE_COMPLETE",
         "ERROR"
       ],

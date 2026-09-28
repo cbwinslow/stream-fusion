@@ -33,6 +33,9 @@ class AgentRpcDispatcher:
         self.register_handler("streamfusion.queryHighlights", self._handle_query_highlights)
         self.register_handler("streamfusion.queryChatters", self._handle_query_chatters)
         self.register_handler("streamfusion.querySlang", self._handle_query_slang)
+        self.register_handler("streamfusion.produceShorts", self._handle_produce_shorts)
+        self.register_handler("streamfusion.listShorts", self._handle_list_shorts)
+        self.register_handler("streamfusion.publishShort", self._handle_publish_short)
 
     def register_handler(
         self, method: str, handler: Callable[[Dict[str, Any]], Any]
@@ -233,4 +236,111 @@ class AgentRpcDispatcher:
         if status_filter:
             entries = [e for e in entries if e.status.upper() == status_filter.upper()]
         return [e.model_dump() for e in entries]
+
+    def _handle_produce_shorts(self, params: Dict[str, Any]) -> List[Dict[str, Any]]:
+        from stream_fusion.production.orchestrator import ShortProductionOrchestrator
+        from stream_fusion.models.schemas import StreamAnalysisResult
+
+        output_dir = Path(params.get("output_dir", "./output/shorts"))
+        top_k = int(params.get("top_k", 3))
+        dry_run = bool(params.get("dry_run", True))
+        video_path_str = params.get("video_path")
+        video_path = Path(video_path_str) if video_path_str else None
+
+        # Build or load analysis result
+        raw_analysis = params.get("analysis")
+        if raw_analysis:
+            analysis = StreamAnalysisResult.model_validate(raw_analysis)
+        else:
+            # Fall back to pulling highlights from the store
+            stream_id = params.get("stream_id")
+            hl_events = self.store.query_events(stream_id=stream_id, event_type=StreamEventType.HIGHLIGHT_MOMENT, limit=10)
+            highlights = [e.payload for e in hl_events if e.payload]
+            analysis = StreamAnalysisResult(
+                stream_id=stream_id or "rpc_stream",
+                total_duration_sec=float(params.get("duration", 300.0)),
+                audio_segments=[],
+                keyframes=[],
+                chat_messages=[],
+                fusion_slices=[],
+                highlights=highlights,
+            )
+
+        orchestrator = ShortProductionOrchestrator()
+        packages = orchestrator.produce_shorts(
+            analysis=analysis,
+            output_dir=output_dir,
+            video_path=video_path,
+            top_k=top_k,
+            dry_run=dry_run,
+        )
+
+        results = []
+        for pkg, env in packages:
+            self.store.append_envelope(env)
+            results.append(pkg.model_dump(mode="json"))
+        return results
+
+    def _handle_list_shorts(self, params: Dict[str, Any]) -> List[Dict[str, Any]]:
+        shorts_dir_str = params.get("output_dir") or params.get("shorts_dir")
+        min_virality = float(params.get("min_virality", 0.0))
+        results = []
+
+        if shorts_dir_str:
+            p = Path(shorts_dir_str)
+            if p.exists():
+                for pkg_file in p.glob("package_*.json"):
+                    try:
+                        data = json.loads(pkg_file.read_text(encoding="utf-8"))
+                        vir = data.get("virality", {}).get("overall_virality_score", 0.0)
+                        if vir >= min_virality:
+                            results.append(data)
+                    except Exception:
+                        pass
+
+        # Also check store for SHORT_PRODUCED envelopes
+        if not results:
+            events = self.store.query_events(event_type=StreamEventType.SHORT_PRODUCED, limit=50)
+            for e in events:
+                if e.payload:
+                    vir = e.payload.get("virality", {}).get("overall_virality_score", 0.0)
+                    if vir >= min_virality:
+                        results.append(e.payload)
+
+        return results
+
+    def _handle_publish_short(self, params: Dict[str, Any]) -> List[Dict[str, Any]]:
+        from stream_fusion.models.schemas import ShortProductionPackage
+        from stream_fusion.production.publisher import PublishDispatcher
+
+        pkg_data = params.get("package")
+        pkg_path_str = params.get("package_path")
+        platforms = params.get("platforms")
+        if isinstance(platforms, str):
+            platforms = [platforms]
+        dry_run = bool(params.get("dry_run", True))
+
+        if pkg_path_str and not pkg_data:
+            pkg_path = Path(pkg_path_str)
+            if pkg_path.exists():
+                pkg_data = json.loads(pkg_path.read_text(encoding="utf-8"))
+
+        if not pkg_data:
+            raise ValueError("Must provide 'package' or valid 'package_path'")
+
+        package = ShortProductionPackage.model_validate(pkg_data)
+        dispatcher = PublishDispatcher()
+        pub_results = dispatcher.publish(package=package, platforms=platforms, dry_run=dry_run)
+
+        # Record envelope for each publication
+        for r in pub_results:
+            env = StreamFusionEnvelope[Dict[str, Any]](
+                stream_id=f"publish_{r.package_id}",
+                event_type=StreamEventType.SHORT_PUBLISHED,
+                payload=r.model_dump(mode="json"),
+            )
+            self.store.append_envelope(env)
+
+        return [r.model_dump(mode="json") for r in pub_results]
+
 

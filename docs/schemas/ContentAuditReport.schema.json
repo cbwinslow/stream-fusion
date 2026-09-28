@@ -1,0 +1,79 @@
+{
+  "$defs": {
+    "AuditStatus": {
+      "enum": [
+        "PASSED",
+        "FLAGGED",
+        "REJECTED"
+      ],
+      "title": "AuditStatus",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "audit_status": {
+      "$ref": "#/$defs/AuditStatus",
+      "default": "PASSED"
+    },
+    "toxicity_score": {
+      "default": 0.0,
+      "title": "Toxicity Score",
+      "type": "number"
+    },
+    "flagged_terms": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Flagged Terms",
+      "type": "array"
+    },
+    "has_sponsored_content": {
+      "default": false,
+      "title": "Has Sponsored Content",
+      "type": "boolean"
+    },
+    "sponsor_brand_names": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Sponsor Brand Names",
+      "type": "array"
+    },
+    "ftc_disclosure_required": {
+      "default": false,
+      "title": "Ftc Disclosure Required",
+      "type": "boolean"
+    },
+    "disclosure_tag": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Disclosure Tag"
+    },
+    "claim_verified": {
+      "default": true,
+      "title": "Claim Verified",
+      "type": "boolean"
+    },
+    "claim_notes": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Claim Notes"
+    }
+  },
+  "title": "ContentAuditReport",
+  "type": "object"
+}

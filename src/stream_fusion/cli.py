@@ -1052,6 +1052,232 @@ def slang_prune(
     console.print(f"[bold green]Pruned {pruned} decayed terms. Remaining catalog size: {len(store.entries)} terms.[/bold green]")
 
 
+# ---------------------------------------------------------------------------
+# Autonomous Multi-Agent Short Production & Auto-Publisher (Spec 21)
+# ---------------------------------------------------------------------------
+shorts_app = typer.Typer(
+    name="shorts",
+    help="Autonomous Multi-Agent Short Production & Auto-Publisher Commands",
+    no_args_is_help=True,
+)
+app.add_typer(shorts_app, name="shorts")
+
+
+@shorts_app.command(name="generate")
+def shorts_generate(
+    analysis_path: Optional[Path] = typer.Option(None, "--analysis", "-a", help="Path to stream analysis JSON or output directory"),
+    video_path: Optional[Path] = typer.Option(None, "--video", "-v", help="Path to video file for vertical clipping and thumbnail"),
+    output_dir: Path = typer.Option(Path("./output/shorts"), "--output-dir", "-o", help="Directory to save generated short packages"),
+    top_k: int = typer.Option(3, "--top-k", "-k", help="Maximum number of vertical shorts to produce"),
+    min_highlight: float = typer.Option(0.4, "--min-highlight", help="Minimum highlight score threshold"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Skip real video encoding and use dry-run placeholders"),
+):
+    """Run multi-agent production committee to generate vertical shorts, copy, and packages."""
+    import json
+    from stream_fusion.models.schemas import StreamAnalysisResult
+    from stream_fusion.production.orchestrator import ShortProductionOrchestrator
+
+    # Locate analysis JSON
+    target_json: Optional[Path] = None
+    if analysis_path:
+        if analysis_path.is_dir():
+            cand = analysis_path / "fusion_analysis.json"
+            if cand.exists():
+                target_json = cand
+        elif analysis_path.exists():
+            target_json = analysis_path
+
+    if not target_json:
+        # Check standard default locations
+        for cand in [Path("./output/fusion_analysis.json"), Path("./fusion_analysis.json")]:
+            if cand.exists():
+                target_json = cand
+                break
+
+    if not target_json or not target_json.exists():
+        console.print("[bold red]No valid analysis JSON found. Please provide --analysis path/to/fusion_analysis.json[/bold red]")
+        raise typer.Exit(code=1)
+
+    console.print(f"[bold purple]Multi-Agent Short Studio[/bold purple]: Loading analysis from {target_json}...")
+    try:
+        data = json.loads(target_json.read_text(encoding="utf-8"))
+        analysis = StreamAnalysisResult.model_validate(data)
+    except Exception as e:
+        console.print(f"[bold red]Failed to parse stream analysis JSON: {e}[/bold red]")
+        raise typer.Exit(code=1)
+
+    orchestrator = ShortProductionOrchestrator()
+    console.print(f"[bold cyan]Convening Multi-Agent Production Committee (Director, Editor, Policy, Copywriter, Publisher)...[/bold cyan]")
+    packages = orchestrator.produce_shorts(
+        analysis=analysis,
+        output_dir=output_dir,
+        video_path=video_path,
+        top_k=top_k,
+        min_highlight_score=min_highlight,
+        dry_run=dry_run,
+    )
+
+    if not packages:
+        console.print("[yellow]No candidates met the threshold criteria for short production.[/yellow]")
+        return
+
+    table = Table(title=f"🎬 Autonomous Short Production Results ({len(packages)} Produced)")
+    table.add_column("Short ID", style="bold cyan")
+    table.add_column("Window", justify="center")
+    table.add_column("Narrative Arc", style="magenta")
+    table.add_column("Virality", justify="right", style="bold green")
+    table.add_column("Safety", justify="center")
+    table.add_column("YouTube Title", style="white")
+
+    for pkg, env in packages:
+        c = pkg.candidate
+        status_style = "[bold green]PASS[/]" if pkg.audit_report.audit_status.value == "PASSED" else "[bold yellow]FLAGGED[/]"
+        table.add_row(
+            c.candidate_id,
+            f"{c.start_sec:.1f}s - {c.end_sec:.1f}s ({c.duration_sec:.0f}s)",
+            c.narrative_arc.value,
+            f"{pkg.virality.overall_virality_score:.0f}/100",
+            status_style,
+            pkg.copy_bundle.youtube_title[:45] + "...",
+        )
+
+    console.print(table)
+    console.print(f"[bold green]Successfully saved {len(packages)} packages and envelopes to {output_dir.resolve()}[/bold green]")
+
+
+@shorts_app.command(name="publish")
+def shorts_publish(
+    package: Path = typer.Argument(..., help="Path to package_<id>.json file"),
+    platform: str = typer.Option("all", "--platform", "-p", help="Target platform (youtube, tiktok, twitter, all)"),
+    dry_run: bool = typer.Option(True, "--dry-run/--live", help="Dry run mode (mock dispatch) vs live API publish"),
+):
+    """Publish a generated short package to target social platform(s)."""
+    import json
+    from stream_fusion.models.schemas import ShortProductionPackage
+    from stream_fusion.production.publisher import PublishDispatcher
+
+    if not package.exists():
+        console.print(f"[bold red]Package file not found: {package}[/bold red]")
+        raise typer.Exit(code=1)
+
+    try:
+        data = json.loads(package.read_text(encoding="utf-8"))
+        pkg = ShortProductionPackage.model_validate(data)
+    except Exception as e:
+        console.print(f"[bold red]Failed to load package: {e}[/bold red]")
+        raise typer.Exit(code=1)
+
+    dispatcher = PublishDispatcher()
+    platforms = ["youtube", "tiktok", "twitter"] if platform.lower() == "all" else [platform.lower()]
+    results = dispatcher.publish(package=pkg, platforms=platforms, dry_run=dry_run)
+
+    table = Table(title=f"🚀 Publication Dispatch for Short [{pkg.candidate.candidate_id}]")
+    table.add_column("Platform", style="bold cyan")
+    table.add_column("Status", style="bold green")
+    table.add_column("Post ID", style="magenta")
+    table.add_column("Post URL", style="blue")
+
+    for r in results:
+        table.add_row(
+            r.platform.capitalize(),
+            r.status,
+            r.post_id or "N/A",
+            r.post_url or "N/A",
+        )
+
+    console.print(table)
+
+
+@shorts_app.command(name="inspect")
+def shorts_inspect(
+    package: Path = typer.Argument(..., help="Path to package_<id>.json file"),
+):
+    """Inspect viral analytics, platform copy, and editorial cut plan for a short package."""
+    import json
+    from rich.panel import Panel
+    from stream_fusion.models.schemas import ShortProductionPackage
+
+    if not package.exists():
+        console.print(f"[bold red]Package file not found: {package}[/bold red]")
+        raise typer.Exit(code=1)
+
+    try:
+        data = json.loads(package.read_text(encoding="utf-8"))
+        pkg = ShortProductionPackage.model_validate(data)
+    except Exception as e:
+        console.print(f"[bold red]Failed to load package: {e}[/bold red]")
+        raise typer.Exit(code=1)
+
+    c = pkg.candidate
+    v = pkg.virality
+    copy = pkg.copy_bundle
+
+    details = (
+        f"[bold cyan]Candidate ID:[/] {c.candidate_id}\n"
+        f"[bold cyan]Time Window:[/] {c.start_sec:.1f}s - {c.end_sec:.1f}s ({c.duration_sec:.1f}s)\n"
+        f"[bold cyan]Peak Timestamp:[/] {c.peak_timestamp_sec:.1f}s (Highlight Score: {c.highlight_score:.2f})\n"
+        f"[bold cyan]Narrative Arc:[/] {c.narrative_arc.value} | [bold cyan]Emotion:[/] {c.primary_emotion}\n"
+        f"[bold cyan]Chat Burst Z-Score:[/] +{c.chat_burst_zscore:.1f}σ | [bold cyan]Dominant Slang:[/] {', '.join(c.dominant_slang) or 'None'}\n\n"
+        f"[bold green]-- Virality Scorecard --[/]\n"
+        f"• Overall Virality: [bold yellow]{v.overall_virality_score:.0f}/100[/]\n"
+        f"• Hook Strength: {v.hook_strength:.0f} | Pacing: {v.pacing_score:.0f} | Resonance: {v.chat_resonance:.0f}\n"
+        f"• Meme Potential: {v.meme_potential:.0f} | Est. Completion Rate: {v.predicted_completion_rate:.1f}%\n\n"
+        f"[bold green]-- Policy & Sponsor Compliance --[/]\n"
+        f"• Status: {pkg.audit_report.audit_status.value} | Toxicity: {pkg.audit_report.toxicity_score:.2f}\n"
+        f"• FTC Disclosure Required: {pkg.audit_report.ftc_disclosure_required} ({pkg.audit_report.disclosure_tag or 'None'})\n\n"
+        f"[bold green]-- Platform Copy --[/]\n"
+        f"[bold magenta]YouTube Title:[/] {copy.youtube_title}\n"
+        f"[bold magenta]TikTok Caption:[/] {copy.tiktok_caption}\n"
+        f"[bold magenta]X / Twitter Hook:[/] {copy.twitter_thread[0] if copy.twitter_thread else 'N/A'}"
+    )
+
+    console.print(Panel(details, title=f"🎬 Short Package Inspection: {package.name}", border_style="bright_blue"))
+
+
+@shorts_app.command(name="list")
+def shorts_list(
+    output_dir: Path = typer.Option(Path("./output/shorts"), "--output-dir", "-o", help="Directory containing generated short packages"),
+):
+    """List all generated short packages in an output directory."""
+    import json
+    from stream_fusion.models.schemas import ShortProductionPackage
+
+    if not output_dir.exists():
+        console.print(f"[yellow]Shorts directory not found: {output_dir}[/yellow]")
+        return
+
+    packages: list[ShortProductionPackage] = []
+    for pkg_path in output_dir.glob("package_*.json"):
+        try:
+            data = json.loads(pkg_path.read_text(encoding="utf-8"))
+            packages.append(ShortProductionPackage.model_validate(data))
+        except Exception:
+            pass
+
+    if not packages:
+        console.print(f"[yellow]No valid short packages found in {output_dir}[/yellow]")
+        return
+
+    table = Table(title=f"🎬 Staged Vertical Short Packages ({len(packages)} found)")
+    table.add_column("Package ID", style="bold cyan")
+    table.add_column("Duration", justify="center")
+    table.add_column("Virality", justify="right", style="bold green")
+    table.add_column("Safety", justify="center")
+    table.add_column("YouTube Title", style="white")
+
+    for pkg in packages:
+        st_style = "[bold green]PASS[/]" if pkg.audit_report.audit_status.value == "PASSED" else "[bold yellow]FLAGGED[/]"
+        table.add_row(
+            pkg.candidate.candidate_id,
+            f"{pkg.candidate.duration_sec:.0f}s",
+            f"{pkg.virality.overall_virality_score:.0f}/100",
+            st_style,
+            pkg.copy_bundle.youtube_title[:50] + "...",
+        )
+
+    console.print(table)
+
+
 if __name__ == "__main__":
     app()
 

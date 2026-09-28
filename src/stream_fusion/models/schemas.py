@@ -1,6 +1,9 @@
 """Pydantic data models for StreamFusion data contracts."""
 
+from datetime import datetime, timezone
+from enum import Enum
 from typing import Any, Dict, List, Optional
+import uuid
 from pydantic import BaseModel, Field
 
 
@@ -359,6 +362,114 @@ class WorkerTaskInput(BaseModel):
     timeout_sec: float = 300.0
     trace_id: Optional[str] = None
     extra_payload: Optional[Dict[str, Any]] = None
+
+
+# --- Spec 21: Autonomous Multi-Agent Short Production & Auto-Publisher ---
+
+class NarrativeArc(str, Enum):
+    HOOK_BUILDUP_PAYOFF = "HOOK_BUILDUP_PAYOFF"
+    INSTANT_CLIMAX_REACTION = "INSTANT_CLIMAX_REACTION"
+    HOT_TAKE_AND_DEBATE = "HOT_TAKE_AND_DEBATE"
+    SPONSOR_SHOWCASE = "SPONSOR_SHOWCASE"
+
+
+class CropLayout(str, Enum):
+    STACKED_CAM_CONTENT = "STACKED_CAM_CONTENT"
+    FULL_CONTENT_PAN_SCAN = "FULL_CONTENT_PAN_SCAN"
+    CAM_PIP = "CAM_PIP"
+
+
+class SubtitleStylePreset(str, Enum):
+    KARAOKE_POP = "KARAOKE_POP"
+    CLEAN_MINIMAL = "CLEAN_MINIMAL"
+    MEME_EMOTE = "MEME_EMOTE"
+
+
+class AuditStatus(str, Enum):
+    PASSED = "PASSED"
+    FLAGGED = "FLAGGED"
+    REJECTED = "REJECTED"
+
+
+class ShortCandidate(BaseModel):
+    candidate_id: str = Field(default_factory=lambda: str(uuid.uuid4())[:8])
+    start_sec: float
+    end_sec: float
+    duration_sec: float
+    peak_timestamp_sec: float
+    highlight_score: float
+    chat_burst_zscore: float
+    primary_emotion: str = "EXCITEMENT"
+    narrative_arc: NarrativeArc = NarrativeArc.HOOK_BUILDUP_PAYOFF
+    hook_text: str = ""
+    summary: str = ""
+    dominant_slang: List[str] = Field(default_factory=list)
+
+
+class EditorialCutPlan(BaseModel):
+    crop_layout: CropLayout = CropLayout.STACKED_CAM_CONTENT
+    facecam_box: Optional[Dict[str, float]] = None
+    content_box: Optional[Dict[str, float]] = None
+    subtitle_preset: SubtitleStylePreset = SubtitleStylePreset.KARAOKE_POP
+    highlight_word_color: str = "&H0000FFFF"
+    burn_subtitles: bool = True
+    audio_duck_music_db: float = -12.0
+    hook_duration_sec: float = 3.0
+
+
+class ContentAuditReport(BaseModel):
+    audit_status: AuditStatus = AuditStatus.PASSED
+    toxicity_score: float = 0.0
+    flagged_terms: List[str] = Field(default_factory=list)
+    has_sponsored_content: bool = False
+    sponsor_brand_names: List[str] = Field(default_factory=list)
+    ftc_disclosure_required: bool = False
+    disclosure_tag: Optional[str] = None
+    claim_verified: bool = True
+    claim_notes: Optional[str] = None
+
+
+class PlatformCopyBundle(BaseModel):
+    youtube_title: str
+    youtube_description: str
+    youtube_tags: List[str] = Field(default_factory=list)
+    tiktok_caption: str
+    tiktok_hashtags: List[str] = Field(default_factory=list)
+    twitter_thread: List[str] = Field(default_factory=list)
+    hook_headline: str
+
+
+class ViralityScoreCard(BaseModel):
+    overall_virality_score: float
+    hook_strength: float
+    pacing_score: float
+    chat_resonance: float
+    meme_potential: float
+    predicted_completion_rate: float
+
+
+class ShortProductionPackage(BaseModel):
+    package_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    candidate: ShortCandidate
+    editorial_plan: EditorialCutPlan
+    audit_report: ContentAuditReport
+    copy_bundle: PlatformCopyBundle
+    virality: ViralityScoreCard
+    video_path: Optional[str] = None
+    thumbnail_path: Optional[str] = None
+    envelope_id: Optional[str] = None
+
+
+class PublishResult(BaseModel):
+    package_id: str
+    platform: str
+    status: str = "PUBLISHED"
+    post_id: Optional[str] = None
+    post_url: Optional[str] = None
+    published_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    payload_snapshot: Dict[str, Any] = Field(default_factory=dict)
+
 
 
 

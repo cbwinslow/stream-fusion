@@ -1,0 +1,399 @@
+{
+  "$defs": {
+    "AuditStatus": {
+      "enum": [
+        "PASSED",
+        "FLAGGED",
+        "REJECTED"
+      ],
+      "title": "AuditStatus",
+      "type": "string"
+    },
+    "ContentAuditReport": {
+      "properties": {
+        "audit_status": {
+          "$ref": "#/$defs/AuditStatus",
+          "default": "PASSED"
+        },
+        "toxicity_score": {
+          "default": 0.0,
+          "title": "Toxicity Score",
+          "type": "number"
+        },
+        "flagged_terms": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Flagged Terms",
+          "type": "array"
+        },
+        "has_sponsored_content": {
+          "default": false,
+          "title": "Has Sponsored Content",
+          "type": "boolean"
+        },
+        "sponsor_brand_names": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Sponsor Brand Names",
+          "type": "array"
+        },
+        "ftc_disclosure_required": {
+          "default": false,
+          "title": "Ftc Disclosure Required",
+          "type": "boolean"
+        },
+        "disclosure_tag": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Disclosure Tag"
+        },
+        "claim_verified": {
+          "default": true,
+          "title": "Claim Verified",
+          "type": "boolean"
+        },
+        "claim_notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Claim Notes"
+        }
+      },
+      "title": "ContentAuditReport",
+      "type": "object"
+    },
+    "CropLayout": {
+      "enum": [
+        "STACKED_CAM_CONTENT",
+        "FULL_CONTENT_PAN_SCAN",
+        "CAM_PIP"
+      ],
+      "title": "CropLayout",
+      "type": "string"
+    },
+    "EditorialCutPlan": {
+      "properties": {
+        "crop_layout": {
+          "$ref": "#/$defs/CropLayout",
+          "default": "STACKED_CAM_CONTENT"
+        },
+        "facecam_box": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Facecam Box"
+        },
+        "content_box": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Box"
+        },
+        "subtitle_preset": {
+          "$ref": "#/$defs/SubtitleStylePreset",
+          "default": "KARAOKE_POP"
+        },
+        "highlight_word_color": {
+          "default": "&H0000FFFF",
+          "title": "Highlight Word Color",
+          "type": "string"
+        },
+        "burn_subtitles": {
+          "default": true,
+          "title": "Burn Subtitles",
+          "type": "boolean"
+        },
+        "audio_duck_music_db": {
+          "default": -12.0,
+          "title": "Audio Duck Music Db",
+          "type": "number"
+        },
+        "hook_duration_sec": {
+          "default": 3.0,
+          "title": "Hook Duration Sec",
+          "type": "number"
+        }
+      },
+      "title": "EditorialCutPlan",
+      "type": "object"
+    },
+    "NarrativeArc": {
+      "enum": [
+        "HOOK_BUILDUP_PAYOFF",
+        "INSTANT_CLIMAX_REACTION",
+        "HOT_TAKE_AND_DEBATE",
+        "SPONSOR_SHOWCASE"
+      ],
+      "title": "NarrativeArc",
+      "type": "string"
+    },
+    "PlatformCopyBundle": {
+      "properties": {
+        "youtube_title": {
+          "title": "Youtube Title",
+          "type": "string"
+        },
+        "youtube_description": {
+          "title": "Youtube Description",
+          "type": "string"
+        },
+        "youtube_tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Youtube Tags",
+          "type": "array"
+        },
+        "tiktok_caption": {
+          "title": "Tiktok Caption",
+          "type": "string"
+        },
+        "tiktok_hashtags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tiktok Hashtags",
+          "type": "array"
+        },
+        "twitter_thread": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Twitter Thread",
+          "type": "array"
+        },
+        "hook_headline": {
+          "title": "Hook Headline",
+          "type": "string"
+        }
+      },
+      "required": [
+        "youtube_title",
+        "youtube_description",
+        "tiktok_caption",
+        "hook_headline"
+      ],
+      "title": "PlatformCopyBundle",
+      "type": "object"
+    },
+    "ShortCandidate": {
+      "properties": {
+        "candidate_id": {
+          "title": "Candidate Id",
+          "type": "string"
+        },
+        "start_sec": {
+          "title": "Start Sec",
+          "type": "number"
+        },
+        "end_sec": {
+          "title": "End Sec",
+          "type": "number"
+        },
+        "duration_sec": {
+          "title": "Duration Sec",
+          "type": "number"
+        },
+        "peak_timestamp_sec": {
+          "title": "Peak Timestamp Sec",
+          "type": "number"
+        },
+        "highlight_score": {
+          "title": "Highlight Score",
+          "type": "number"
+        },
+        "chat_burst_zscore": {
+          "title": "Chat Burst Zscore",
+          "type": "number"
+        },
+        "primary_emotion": {
+          "default": "EXCITEMENT",
+          "title": "Primary Emotion",
+          "type": "string"
+        },
+        "narrative_arc": {
+          "$ref": "#/$defs/NarrativeArc",
+          "default": "HOOK_BUILDUP_PAYOFF"
+        },
+        "hook_text": {
+          "default": "",
+          "title": "Hook Text",
+          "type": "string"
+        },
+        "summary": {
+          "default": "",
+          "title": "Summary",
+          "type": "string"
+        },
+        "dominant_slang": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Dominant Slang",
+          "type": "array"
+        }
+      },
+      "required": [
+        "start_sec",
+        "end_sec",
+        "duration_sec",
+        "peak_timestamp_sec",
+        "highlight_score",
+        "chat_burst_zscore"
+      ],
+      "title": "ShortCandidate",
+      "type": "object"
+    },
+    "SubtitleStylePreset": {
+      "enum": [
+        "KARAOKE_POP",
+        "CLEAN_MINIMAL",
+        "MEME_EMOTE"
+      ],
+      "title": "SubtitleStylePreset",
+      "type": "string"
+    },
+    "ViralityScoreCard": {
+      "properties": {
+        "overall_virality_score": {
+          "title": "Overall Virality Score",
+          "type": "number"
+        },
+        "hook_strength": {
+          "title": "Hook Strength",
+          "type": "number"
+        },
+        "pacing_score": {
+          "title": "Pacing Score",
+          "type": "number"
+        },
+        "chat_resonance": {
+          "title": "Chat Resonance",
+          "type": "number"
+        },
+        "meme_potential": {
+          "title": "Meme Potential",
+          "type": "number"
+        },
+        "predicted_completion_rate": {
+          "title": "Predicted Completion Rate",
+          "type": "number"
+        }
+      },
+      "required": [
+        "overall_virality_score",
+        "hook_strength",
+        "pacing_score",
+        "chat_resonance",
+        "meme_potential",
+        "predicted_completion_rate"
+      ],
+      "title": "ViralityScoreCard",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "package_id": {
+      "title": "Package Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "candidate": {
+      "$ref": "#/$defs/ShortCandidate"
+    },
+    "editorial_plan": {
+      "$ref": "#/$defs/EditorialCutPlan"
+    },
+    "audit_report": {
+      "$ref": "#/$defs/ContentAuditReport"
+    },
+    "copy_bundle": {
+      "$ref": "#/$defs/PlatformCopyBundle"
+    },
+    "virality": {
+      "$ref": "#/$defs/ViralityScoreCard"
+    },
+    "video_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Video Path"
+    },
+    "thumbnail_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Thumbnail Path"
+    },
+    "envelope_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Envelope Id"
+    }
+  },
+  "required": [
+    "candidate",
+    "editorial_plan",
+    "audit_report",
+    "copy_bundle",
+    "virality"
+  ],
+  "title": "ShortProductionPackage",
+  "type": "object"
+}

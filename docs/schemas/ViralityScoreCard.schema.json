@@ -1,0 +1,38 @@
+{
+  "properties": {
+    "overall_virality_score": {
+      "title": "Overall Virality Score",
+      "type": "number"
+    },
+    "hook_strength": {
+      "title": "Hook Strength",
+      "type": "number"
+    },
+    "pacing_score": {
+      "title": "Pacing Score",
+      "type": "number"
+    },
+    "chat_resonance": {
+      "title": "Chat Resonance",
+      "type": "number"
+    },
+    "meme_potential": {
+      "title": "Meme Potential",
+      "type": "number"
+    },
+    "predicted_completion_rate": {
+      "title": "Predicted Completion Rate",
+      "type": "number"
+    }
+  },
+  "required": [
+    "overall_virality_score",
+    "hook_strength",
+    "pacing_score",
+    "chat_resonance",
+    "meme_potential",
+    "predicted_completion_rate"
+  ],
+  "title": "ViralityScoreCard",
+  "type": "object"
+}
