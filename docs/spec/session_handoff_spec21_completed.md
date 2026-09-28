@@ -75,3 +75,13 @@ Exported 42 schemas to `docs/schemas/`:
 2. **Spec 20: Web Grounding & Live Knowledge Graph Expansion**
    - Connect extracted claims and web post cards to live search/fact-checking engines.
    - Cross-stream opinion synthesis and temporal stance shift tracking over months of broadcasts.
+
+---
+
+## 5. Quick-Start Prompt for the Fresh Session
+
+Copy and paste this single line to immediately resume in the fresh session:
+
+```text
+Pick up from session_handoff_spec21_completed.md in stream-fusion. Git is clean at e973b10 with 118/118 tests passing. Let's decide our next milestone and start building.
+```
