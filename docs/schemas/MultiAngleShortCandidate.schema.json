@@ -1,0 +1,62 @@
+{
+  "properties": {
+    "candidate_id": {
+      "title": "Candidate Id",
+      "type": "string"
+    },
+    "start_sec": {
+      "title": "Start Sec",
+      "type": "number"
+    },
+    "end_sec": {
+      "title": "End Sec",
+      "type": "number"
+    },
+    "duration_sec": {
+      "title": "Duration Sec",
+      "type": "number"
+    },
+    "participating_channels": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Participating Channels",
+      "type": "array"
+    },
+    "layout_preset": {
+      "default": "STACKED_SPLIT",
+      "description": "'STACKED_SPLIT', 'SIDE_BY_SIDE', 'PICTURE_IN_PICTURE', 'QUAD_GRID'",
+      "title": "Layout Preset",
+      "type": "string"
+    },
+    "cross_platform_agreement": {
+      "default": 1.0,
+      "title": "Cross Platform Agreement",
+      "type": "number"
+    },
+    "virality_score": {
+      "default": 0.0,
+      "title": "Virality Score",
+      "type": "number"
+    },
+    "title": {
+      "default": "",
+      "title": "Title",
+      "type": "string"
+    },
+    "hooks": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Hooks",
+      "type": "array"
+    }
+  },
+  "required": [
+    "start_sec",
+    "end_sec",
+    "duration_sec"
+  ],
+  "title": "MultiAngleShortCandidate",
+  "type": "object"
+}

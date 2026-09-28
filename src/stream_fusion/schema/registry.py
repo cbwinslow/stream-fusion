@@ -69,6 +69,15 @@ class SchemaRegistry:
             "EntityOpinionSynthesis",
             "PlatformCapabilities",
             "MonetizationEvent",
+            "CoStreamChannelConfig",
+            "CoStreamSessionConfig",
+            "CoStreamChannelTelemetry",
+            "CoStreamSessionStatus",
+            "CrossStreamSyncResult",
+            "CrossAudienceSentimentPoint",
+            "CrossStreamBurstPropagation",
+            "CoStreamDebateTurn",
+            "MultiAngleShortCandidate",
         ]:
             if hasattr(model_schemas, name):
                 cls = getattr(model_schemas, name)

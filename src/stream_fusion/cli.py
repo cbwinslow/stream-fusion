@@ -1,7 +1,7 @@
 """StreamFusion Command Line Interface."""
 
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, List, Optional
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -1482,6 +1482,177 @@ def knowledge_synthesize(
         title=f"📊 Opinion Synthesis: {entity} (Consensus: {syn.overall_consensus_stance})",
         border_style="cyan",
     ))
+
+
+# --- Spec 23: Co-Stream & Cross-Platform Alignment CLI ---
+
+costream_app = typer.Typer(
+    name="costream",
+    help="Multi-Stream Co-Stream Synchronization and Cross-Platform Audience Analytics (Spec 23)",
+    no_args_is_help=True,
+)
+app.add_typer(costream_app, name="costream")
+
+
+@costream_app.command(name="align")
+def costream_align(
+    streams: List[Path] = typer.Option(..., "--stream", "-s", help="Paths to channel analysis or chat JSON files (provide at least 2)"),
+    reference: Optional[str] = typer.Option(None, "--reference", "-r", help="Designated reference channel ID"),
+    output: Path = typer.Option(Path("./costream_aligned.json"), "--out", "-o", help="Output path for aligned co-stream session JSON"),
+):
+    """Align multiple live stream recordings or chat files onto a unified reference clock."""
+    import json
+    from stream_fusion.costream.sync_engine import CrossStreamSyncEngine
+    from stream_fusion.models.schemas import ChatMessage
+
+    if len(streams) < 2:
+        console.print("[bold red]Error: Must provide at least 2 stream JSON files to align.[/bold red]")
+        raise typer.Exit(1)
+
+    console.print(f"[bold purple]StreamFusion Co-Stream Synchronizer[/bold purple]: Ingesting {len(streams)} streams...")
+
+    channel_msgs: Dict[str, List[ChatMessage]] = {}
+    channel_triggers: Dict[str, List[float]] = {}
+
+    for s_path in streams:
+        ch_name = s_path.stem.replace("_analysis", "").replace("_chat", "")
+        with open(s_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        msgs = []
+        raw_msgs = data.get("chat_messages", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
+        for m in raw_msgs:
+            if isinstance(m, dict):
+                msgs.append(ChatMessage(**m))
+        channel_msgs[ch_name] = msgs
+
+        # Extract timestamps of significant emotes/bursts as triggers
+        triggers = [m.timestamp_offset for m in msgs if len(m.emotes) > 0 or len(m.content) > 20]
+        channel_triggers[ch_name] = triggers
+
+    engine = CrossStreamSyncEngine(reference_channel_id=reference)
+    sync_result = engine.calibrate_from_trigger_events(channel_triggers, reference_channel_id=reference)
+    aligned = engine.align_messages(channel_msgs)
+
+    table = Table(title=f"⏱️ Cross-Stream Latency Calibration (Anchor: {sync_result.reference_channel_id})")
+    table.add_column("Channel ID", style="bold cyan")
+    table.add_column("Latency Offset (s)", justify="right")
+    table.add_column("Confidence", justify="right")
+    table.add_column("Message Count", justify="right")
+
+    for ch_id, off in sync_result.channel_offsets.items():
+        conf = sync_result.confidence_scores.get(ch_id, 0.0)
+        table.add_row(
+            ch_id,
+            f"{off:+.3f}s",
+            f"{conf:.2f}",
+            str(len(channel_msgs.get(ch_id, []))),
+        )
+
+    console.print(table)
+
+    # Save aligned package
+    aligned_pkg = {
+        "sync_result": sync_result.model_dump(mode="json"),
+        "total_aligned_messages": len(aligned),
+        "aligned_messages": [
+            [round(u_ts, 3), ch_id, m.model_dump(mode="json")]
+            for u_ts, ch_id, m in aligned
+        ],
+    }
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with open(output, "w", encoding="utf-8") as f:
+        json.dump(aligned_pkg, f, indent=2)
+
+    console.print(f"[bold green][OK] Aligned co-stream session saved to:[/] {output.resolve()}")
+
+
+@costream_app.command(name="compare")
+def costream_compare(
+    aligned_file: Path = typer.Option(..., "--aligned", "-a", help="Path to aligned co-stream JSON file"),
+    window_sec: float = typer.Option(2.0, "--window", "-w", help="Bucket window in seconds"),
+    divergence_threshold: float = typer.Option(0.75, "--divergence-threshold", "-d", help="Divergence sensitivity threshold"),
+):
+    """Analyze cross-platform audience reaction and sentiment alignment from aligned stream JSON."""
+    import json
+    from stream_fusion.costream.audience_comparator import CrossAudienceComparator
+    from stream_fusion.models.schemas import ChatMessage
+
+    with open(aligned_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    raw_aligned = data.get("aligned_messages", [])
+    if not raw_aligned:
+        console.print("[bold red]Error: No aligned messages found in file.[/bold red]")
+        raise typer.Exit(1)
+
+    parsed_aligned = []
+    for item in raw_aligned:
+        u_ts = float(item[0])
+        ch_id = str(item[1])
+        m = ChatMessage(**item[2])
+        parsed_aligned.append((u_ts, ch_id, m))
+
+    comparator = CrossAudienceComparator(
+        bucket_window_sec=window_sec,
+        divergence_threshold=divergence_threshold,
+    )
+    timeline = comparator.compute_aligned_sentiment_timeline(parsed_aligned)
+    summary = comparator.summarize_session_agreement(timeline)
+
+    table = Table(title=f"📊 Cross-Platform Audience Timeline ({len(timeline)} windows)")
+    table.add_column("Unified Ts", justify="right", style="cyan")
+    table.add_column("Agreement", justify="center")
+    table.add_column("Platform Sentiments", style="white")
+    table.add_column("Divergence?", justify="center")
+
+    for p in timeline[:15]:  # Display top 15 windows
+        agr_color = "green" if p.cross_platform_agreement >= 0.8 else ("yellow" if p.cross_platform_agreement >= 0.5 else "red")
+        agr_str = f"[{agr_color}]{p.cross_platform_agreement:.2f}[/]"
+        div_str = "[bold red]DIVERGENCE[/]" if p.divergence_detected else "[dim]--[/]"
+        sent_str = " | ".join(f"{plat}: {score:+.2f}" for plat, score in p.platform_sentiments.items())
+        table.add_row(f"{p.timestamp_sec:.1f}s", agr_str, sent_str, div_str)
+
+    console.print(table)
+
+    console.print(
+        f"\n[bold]Session Consensus Summary[/bold]: Overall Agreement Index: [bold green]{summary['overall_agreement_index']:.2f}[/bold green] | "
+        f"Divergence Moments: [bold yellow]{summary['divergence_count']}[/bold yellow] / {summary['total_points']} buckets"
+    )
+
+
+@costream_app.command(name="start")
+def costream_start(
+    config_file: Path = typer.Option(..., "--config", "-c", help="Path to CoStreamSessionConfig JSON file"),
+    duration: Optional[float] = typer.Option(None, "--duration", "-d", help="Run co-stream session for N seconds (or forever if omitted)"),
+):
+    """Launch real-time concurrent multi-stream co-streaming supervisor session."""
+    import asyncio
+    import json
+    from stream_fusion.costream.coordinator import MultiStreamCoordinator
+    from stream_fusion.models.schemas import CoStreamSessionConfig
+
+    with open(config_file, "r", encoding="utf-8") as f:
+        cfg_dict = json.load(f)
+
+    session_cfg = CoStreamSessionConfig(**cfg_dict)
+    coordinator = MultiStreamCoordinator(config=session_cfg)
+
+    async def _run():
+        console.print(f"[bold purple]Launching Co-Stream Session[/bold purple]: {session_cfg.session_title} ({len(session_cfg.channels)} channels)")
+        await coordinator.start()
+        try:
+            if duration:
+                await asyncio.sleep(duration)
+            else:
+                while coordinator.is_active:
+                    await asyncio.sleep(1.0)
+        finally:
+            await coordinator.stop()
+            console.print("[bold green]Co-stream session stopped cleanly.[/bold green]")
+
+    asyncio.run(_run())
 
 
 if __name__ == "__main__":

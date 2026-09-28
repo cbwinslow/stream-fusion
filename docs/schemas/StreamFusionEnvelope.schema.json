@@ -79,6 +79,11 @@
         "CHAT_MESSAGE",
         "MEDIA_SEGMENT_BUFFERED",
         "PIPELINE_COMPLETE",
+        "COSTREAM_SESSION_STARTED",
+        "COSTREAM_SESSION_STOPPED",
+        "COSTREAM_MESSAGE",
+        "COSTREAM_BURST",
+        "COSTREAM_DIVERGENCE_ALERT",
         "ERROR"
       ],
       "title": "StreamEventType",

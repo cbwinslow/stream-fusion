@@ -652,6 +652,105 @@ class MonetizationEvent(BaseModel):
     sender_name: Optional[str] = None
 
 
+# --- Spec 23: Multi-Stream Co-Stream & Cross-Platform Alignment ---
+
+class CoStreamChannelConfig(BaseModel):
+    channel_id: str
+    stream_config: LiveStreamConfig
+    creator_name: Optional[str] = None
+    is_reference_stream: bool = False
+    manual_latency_offset: Optional[float] = None
+    max_buffer_size_mb: int = 250
+    voiceprint_profile_id: Optional[str] = None
+
+
+class CoStreamSessionConfig(BaseModel):
+    session_id: str = Field(default_factory=lambda: f"costream-{uuid.uuid4().hex[:8]}")
+    session_title: str = "Live Co-Stream Event"
+    channels: List[CoStreamChannelConfig] = Field(default_factory=list)
+    reference_channel_id: Optional[str] = None
+    auto_sync: bool = True
+    sync_interval_sec: float = 30.0
+    max_session_memory_mb: int = 1024
+    bucket_window_sec: float = 2.0
+
+
+class CoStreamChannelTelemetry(BaseModel):
+    channel_id: str
+    platform: LivePlatform
+    state: ConnectorState = ConnectorState.STOPPED
+    total_messages_received: int = 0
+    current_message_velocity: float = 0.0
+    calibrated_latency_offset: float = 0.0
+    sync_confidence: float = 1.0
+    reconnect_attempts: int = 0
+    last_error: Optional[str] = None
+
+
+class CoStreamSessionStatus(BaseModel):
+    session_id: str
+    is_active: bool = False
+    uptime_sec: float = 0.0
+    channels: Dict[str, CoStreamChannelTelemetry] = Field(default_factory=dict)
+    reference_channel_id: Optional[str] = None
+    cross_platform_agreement_index: float = 1.0
+    total_messages: int = 0
+
+
+class CrossStreamSyncResult(BaseModel):
+    reference_channel_id: str
+    channel_offsets: Dict[str, float] = Field(default_factory=dict)
+    confidence_scores: Dict[str, float] = Field(default_factory=dict)
+    sync_method: str = "CROSS_CORRELATION"
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class CrossAudienceSentimentPoint(BaseModel):
+    timestamp_sec: float
+    window_sec: float = 2.0
+    platform_sentiments: Dict[str, float] = Field(default_factory=dict)
+    channel_sentiments: Dict[str, float] = Field(default_factory=dict)
+    cross_platform_agreement: float = 1.0
+    dominant_emotes: Dict[str, List[str]] = Field(default_factory=dict)
+    divergence_detected: bool = False
+    divergence_description: Optional[str] = None
+
+
+class CrossStreamBurstPropagation(BaseModel):
+    token: str
+    origin_platform: str
+    origin_channel: str
+    origin_timestamp: float
+    cascade_timeline: Dict[str, float] = Field(default_factory=dict)
+    cascade_velocity_sec: float = 0.0
+
+
+class CoStreamDebateTurn(BaseModel):
+    turn_id: str = Field(default_factory=lambda: f"turn-{uuid.uuid4().hex[:6]}")
+    speaker_name: str
+    channel_id: str
+    start_sec: float
+    end_sec: float
+    duration_sec: float
+    transcript: str
+    sentiment_score: float = 0.0
+    interrupts_previous: bool = False
+
+
+class MultiAngleShortCandidate(BaseModel):
+    candidate_id: str = Field(default_factory=lambda: f"mashort-{uuid.uuid4().hex[:8]}")
+    start_sec: float
+    end_sec: float
+    duration_sec: float
+    participating_channels: List[str] = Field(default_factory=list)
+    layout_preset: str = Field(default="STACKED_SPLIT", description="'STACKED_SPLIT', 'SIDE_BY_SIDE', 'PICTURE_IN_PICTURE', 'QUAD_GRID'")
+    cross_platform_agreement: float = 1.0
+    virality_score: float = 0.0
+    title: str = ""
+    hooks: List[str] = Field(default_factory=list)
+
+
+
 
 
 

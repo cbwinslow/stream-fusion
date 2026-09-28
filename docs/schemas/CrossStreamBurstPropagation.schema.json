@@ -1,0 +1,40 @@
+{
+  "properties": {
+    "token": {
+      "title": "Token",
+      "type": "string"
+    },
+    "origin_platform": {
+      "title": "Origin Platform",
+      "type": "string"
+    },
+    "origin_channel": {
+      "title": "Origin Channel",
+      "type": "string"
+    },
+    "origin_timestamp": {
+      "title": "Origin Timestamp",
+      "type": "number"
+    },
+    "cascade_timeline": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Cascade Timeline",
+      "type": "object"
+    },
+    "cascade_velocity_sec": {
+      "default": 0.0,
+      "title": "Cascade Velocity Sec",
+      "type": "number"
+    }
+  },
+  "required": [
+    "token",
+    "origin_platform",
+    "origin_channel",
+    "origin_timestamp"
+  ],
+  "title": "CrossStreamBurstPropagation",
+  "type": "object"
+}

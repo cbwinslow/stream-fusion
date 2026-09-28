@@ -22,6 +22,7 @@ class AgentRpcDispatcher:
         self.registry = registry or default_schema_registry
         self._handlers: Dict[str, Callable[[Dict[str, Any]], Any]] = {}
         self._live_coordinators: Dict[str, Any] = {}
+        self._costream_coordinators: Dict[str, Any] = {}
         self._stance_tracker: Optional[Any] = None
         self._web_grounder: Optional[Any] = None
         self._register_default_handlers()
@@ -45,6 +46,11 @@ class AgentRpcDispatcher:
         self.register_handler("streamfusion.groundClaim", self._handle_ground_claim)
         self.register_handler("streamfusion.queryStanceShifts", self._handle_query_stance_shifts)
         self.register_handler("streamfusion.synthesizeEntityOpinions", self._handle_synthesize_entity_opinions)
+        self.register_handler("streamfusion.startCoStream", self._handle_start_costream)
+        self.register_handler("streamfusion.getCoStreamStatus", self._handle_get_costream_status)
+        self.register_handler("streamfusion.stopCoStream", self._handle_stop_costream)
+        self.register_handler("streamfusion.alignCoStreams", self._handle_align_costreams)
+        self.register_handler("streamfusion.compareCrossAudience", self._handle_compare_cross_audience)
 
     def register_handler(
         self, method: str, handler: Callable[[Dict[str, Any]], Any]
@@ -415,6 +421,101 @@ class AgentRpcDispatcher:
         synthesizer = CrossStreamOpinionSynthesizer(tracker=self._stance_tracker)
         syn = synthesizer.synthesize(entity)
         return syn.model_dump(mode="json")
+
+    def _handle_start_costream(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        from stream_fusion.costream.coordinator import MultiStreamCoordinator
+        from stream_fusion.models.schemas import CoStreamSessionConfig
+
+        config = CoStreamSessionConfig(**params)
+        coord = MultiStreamCoordinator(config=config)
+        self._costream_coordinators[config.session_id] = coord
+
+        import asyncio
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(coord.start())
+        except RuntimeError:
+            pass
+
+        return {
+            "session_id": config.session_id,
+            "status": "STARTING",
+            "channels": [ch.channel_id for ch in config.channels],
+        }
+
+    def _handle_get_costream_status(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        session_id = params.get("session_id")
+        if not session_id or session_id not in self._costream_coordinators:
+            raise ValueError(f"Co-stream session '{session_id}' not found")
+
+        coord = self._costream_coordinators[session_id]
+        status = coord.get_status()
+        return status.model_dump(mode="json")
+
+    def _handle_stop_costream(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        session_id = params.get("session_id")
+        if not session_id or session_id not in self._costream_coordinators:
+            raise ValueError(f"Co-stream session '{session_id}' not found")
+
+        coord = self._costream_coordinators[session_id]
+        import asyncio
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(coord.stop())
+        except RuntimeError:
+            pass
+
+        return {"session_id": session_id, "status": "STOPPING"}
+
+    def _handle_align_costreams(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        from stream_fusion.costream.sync_engine import CrossStreamSyncEngine
+
+        ref_id = params.get("reference_channel_id")
+        signals = params.get("channel_signals", {})
+        triggers = params.get("channel_triggers")
+
+        engine = CrossStreamSyncEngine(reference_channel_id=ref_id)
+
+        if triggers:
+            res = engine.calibrate_from_trigger_events(triggers, reference_channel_id=ref_id)
+        elif signals:
+            res = engine.calibrate_offsets(signals, reference_channel_id=ref_id)
+        else:
+            raise ValueError("Must provide either 'channel_signals' or 'channel_triggers'")
+
+        return res.model_dump(mode="json")
+
+    def _handle_compare_cross_audience(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        from stream_fusion.costream.audience_comparator import CrossAudienceComparator
+        from stream_fusion.models.schemas import ChatMessage
+
+        raw_messages = params.get("aligned_messages", [])
+        ch_plat = params.get("channel_to_platform", {})
+
+        aligned_msgs = []
+        for item in raw_messages:
+            u_ts = float(item[0])
+            ch_id = str(item[1])
+            msg_dict = item[2]
+            msg = ChatMessage(**msg_dict) if isinstance(msg_dict, dict) else msg_dict
+            aligned_msgs.append((u_ts, ch_id, msg))
+
+        comparator = CrossAudienceComparator(
+            bucket_window_sec=float(params.get("bucket_window_sec", 2.0)),
+            divergence_threshold=float(params.get("divergence_threshold", 0.75)),
+        )
+
+        timeline = comparator.compute_aligned_sentiment_timeline(
+            aligned_msgs,
+            channel_to_platform=ch_plat,
+        )
+        summary = comparator.summarize_session_agreement(timeline)
+
+        return {
+            "timeline": [p.model_dump(mode="json") for p in timeline],
+            "summary": summary,
+        }
+
 
 
 

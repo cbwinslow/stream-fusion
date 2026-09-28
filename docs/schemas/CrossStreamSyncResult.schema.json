@@ -1,0 +1,37 @@
+{
+  "properties": {
+    "reference_channel_id": {
+      "title": "Reference Channel Id",
+      "type": "string"
+    },
+    "channel_offsets": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Channel Offsets",
+      "type": "object"
+    },
+    "confidence_scores": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Confidence Scores",
+      "type": "object"
+    },
+    "sync_method": {
+      "default": "CROSS_CORRELATION",
+      "title": "Sync Method",
+      "type": "string"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "title": "Timestamp",
+      "type": "string"
+    }
+  },
+  "required": [
+    "reference_channel_id"
+  ],
+  "title": "CrossStreamSyncResult",
+  "type": "object"
+}

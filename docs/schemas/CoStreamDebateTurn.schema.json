@@ -1,0 +1,52 @@
+{
+  "properties": {
+    "turn_id": {
+      "title": "Turn Id",
+      "type": "string"
+    },
+    "speaker_name": {
+      "title": "Speaker Name",
+      "type": "string"
+    },
+    "channel_id": {
+      "title": "Channel Id",
+      "type": "string"
+    },
+    "start_sec": {
+      "title": "Start Sec",
+      "type": "number"
+    },
+    "end_sec": {
+      "title": "End Sec",
+      "type": "number"
+    },
+    "duration_sec": {
+      "title": "Duration Sec",
+      "type": "number"
+    },
+    "transcript": {
+      "title": "Transcript",
+      "type": "string"
+    },
+    "sentiment_score": {
+      "default": 0.0,
+      "title": "Sentiment Score",
+      "type": "number"
+    },
+    "interrupts_previous": {
+      "default": false,
+      "title": "Interrupts Previous",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "speaker_name",
+    "channel_id",
+    "start_sec",
+    "end_sec",
+    "duration_sec",
+    "transcript"
+  ],
+  "title": "CoStreamDebateTurn",
+  "type": "object"
+}

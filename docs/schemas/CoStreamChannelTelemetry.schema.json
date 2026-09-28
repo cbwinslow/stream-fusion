@@ -1,0 +1,81 @@
+{
+  "$defs": {
+    "ConnectorState": {
+      "enum": [
+        "STOPPED",
+        "STARTING",
+        "RUNNING",
+        "RECONNECTING",
+        "ERROR"
+      ],
+      "title": "ConnectorState",
+      "type": "string"
+    },
+    "LivePlatform": {
+      "enum": [
+        "TWITCH",
+        "KICK",
+        "YOUTUBE_LIVE",
+        "CUSTOM_HLS"
+      ],
+      "title": "LivePlatform",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "channel_id": {
+      "title": "Channel Id",
+      "type": "string"
+    },
+    "platform": {
+      "$ref": "#/$defs/LivePlatform"
+    },
+    "state": {
+      "$ref": "#/$defs/ConnectorState",
+      "default": "STOPPED"
+    },
+    "total_messages_received": {
+      "default": 0,
+      "title": "Total Messages Received",
+      "type": "integer"
+    },
+    "current_message_velocity": {
+      "default": 0.0,
+      "title": "Current Message Velocity",
+      "type": "number"
+    },
+    "calibrated_latency_offset": {
+      "default": 0.0,
+      "title": "Calibrated Latency Offset",
+      "type": "number"
+    },
+    "sync_confidence": {
+      "default": 1.0,
+      "title": "Sync Confidence",
+      "type": "number"
+    },
+    "reconnect_attempts": {
+      "default": 0,
+      "title": "Reconnect Attempts",
+      "type": "integer"
+    },
+    "last_error": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Last Error"
+    }
+  },
+  "required": [
+    "channel_id",
+    "platform"
+  ],
+  "title": "CoStreamChannelTelemetry",
+  "type": "object"
+}

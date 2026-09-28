@@ -1,0 +1,64 @@
+{
+  "properties": {
+    "timestamp_sec": {
+      "title": "Timestamp Sec",
+      "type": "number"
+    },
+    "window_sec": {
+      "default": 2.0,
+      "title": "Window Sec",
+      "type": "number"
+    },
+    "platform_sentiments": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Platform Sentiments",
+      "type": "object"
+    },
+    "channel_sentiments": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Channel Sentiments",
+      "type": "object"
+    },
+    "cross_platform_agreement": {
+      "default": 1.0,
+      "title": "Cross Platform Agreement",
+      "type": "number"
+    },
+    "dominant_emotes": {
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "title": "Dominant Emotes",
+      "type": "object"
+    },
+    "divergence_detected": {
+      "default": false,
+      "title": "Divergence Detected",
+      "type": "boolean"
+    },
+    "divergence_description": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Divergence Description"
+    }
+  },
+  "required": [
+    "timestamp_sec"
+  ],
+  "title": "CrossAudienceSentimentPoint",
+  "type": "object"
+}
