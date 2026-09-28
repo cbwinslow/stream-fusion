@@ -318,3 +318,35 @@ class ReadAlongSegment(BaseModel):
     source_handle: Optional[str] = None
 
 
+# --- Spec 17: Self-Expanding Adaptive Slang & Meme Engine ---
+
+class SlangCandidate(BaseModel):
+    term: str
+    burst_velocity: float
+    z_score: float
+    total_occurrences: int
+    unique_authors: int
+    window_start_sec: float
+    window_end_sec: float
+    co_occurring_intents: Dict[str, float] = Field(default_factory=dict)
+    inferred_intent: str = "NEUTRAL"
+    inferred_valence: float = 0.0
+    acoustic_energy_boost: float = 0.0
+    confidence: float = 0.5
+
+
+class AdaptiveTermEntry(BaseModel):
+    term: str
+    inferred_intent: str
+    valence: float = 0.0
+    confidence: float = 0.5
+    first_seen_timestamp: str
+    last_seen_timestamp: str
+    occurrence_count: int = 1
+    unique_authors_count: int = 1
+    peak_z_score: float = 3.0
+    decay_half_life_days: float = 14.0
+    status: str = "ACTIVE"
+
+
+

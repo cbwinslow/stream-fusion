@@ -32,6 +32,7 @@ class AgentRpcDispatcher:
         self.register_handler("streamfusion.queryClaims", self._handle_query_claims)
         self.register_handler("streamfusion.queryHighlights", self._handle_query_highlights)
         self.register_handler("streamfusion.queryChatters", self._handle_query_chatters)
+        self.register_handler("streamfusion.querySlang", self._handle_query_slang)
 
     def register_handler(
         self, method: str, handler: Callable[[Dict[str, Any]], Any]
@@ -222,3 +223,14 @@ class AgentRpcDispatcher:
             limit=limit,
         )
         return [e.payload for e in events if e.payload]
+
+    def _handle_query_slang(self, params: Dict[str, Any]) -> List[Dict[str, Any]]:
+        from stream_fusion.nlp.adaptive_slang import AdaptiveLexiconStore
+        lexicon_path = Path(params.get("lexicon_path", "adaptive_lexicon.json"))
+        store = AdaptiveLexiconStore(db_path=lexicon_path)
+        status_filter = params.get("status")
+        entries = list(store.entries.values())
+        if status_filter:
+            entries = [e for e in entries if e.status.upper() == status_filter.upper()]
+        return [e.model_dump() for e in entries]
+

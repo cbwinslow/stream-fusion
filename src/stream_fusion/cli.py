@@ -911,8 +911,144 @@ def agent_rpc(
         sys.stdout.flush()
 
 
+# ---------------------------------------------------------------------------
+# Adaptive Slang & Meme Engine Subcommands (Spec 17)
+# ---------------------------------------------------------------------------
+slang_app = typer.Typer(
+    name="slang",
+    help="Self-Expanding Adaptive Slang & Meme Engine Commands",
+    no_args_is_help=True,
+)
+app.add_typer(slang_app, name="slang")
+
+
+@slang_app.command(name="scan")
+def slang_scan(
+    chat: Path = typer.Option(..., "--chat", "-c", help="Path to Twitch/YouTube chat replay JSON"),
+    lexicon: Path = typer.Option(Path("./adaptive_lexicon.json"), "--lexicon", "-l", help="Path to adaptive lexicon store"),
+    window: float = typer.Option(10.0, "--window", "-w", help="Rolling burst window in seconds"),
+    z_threshold: float = typer.Option(3.0, "--z-score", "-z", help="Minimum standard deviations for burst detection"),
+):
+    """Scan chat replay for emerging slang bursts and auto-tag emotional intent."""
+    from stream_fusion.chat.analyzer import ChatAnalyzer
+    from stream_fusion.nlp.adaptive_slang import (
+        AdaptiveLexiconStore,
+        RollingBurstDetector,
+        ContextualAutoTagger,
+        AdaptiveSlangEngine,
+    )
+
+    if not chat.exists():
+        console.print(f"[bold red]Chat replay file {chat} not found.[/bold red]")
+        raise typer.Exit(code=1)
+
+    analyzer = ChatAnalyzer()
+    messages = analyzer.parse_twitch_downloader_json(chat)
+    console.print(f"[bold purple]Scanning {len(messages)} chat messages for slang bursts (Z >= {z_threshold})...[/bold purple]")
+
+    store = AdaptiveLexiconStore(db_path=lexicon)
+    detector = RollingBurstDetector(window_sec=window, z_threshold=z_threshold)
+    tagger = ContextualAutoTagger()
+    engine = AdaptiveSlangEngine(lexicon_store=store, burst_detector=detector, auto_tagger=tagger)
+
+    candidates, clusters = engine.process_chat_stream(messages, persist=True)
+
+    if not candidates:
+        console.print("[yellow]No new emerging slang terms exceeded the burst threshold in this chat stream.[/yellow]")
+        return
+
+    table = Table(title=f"Discovered Emerging Slang Candidates ({len(candidates)} Detected)")
+    table.add_column("Term", style="bold cyan")
+    table.add_column("Z-Score", justify="right", style="magenta")
+    table.add_column("Velocity (msg/s)", justify="right", style="white")
+    table.add_column("Occurrences", justify="right", style="white")
+    table.add_column("Inferred Intent", style="bold green")
+    table.add_column("Valence", justify="right", style="yellow")
+    table.add_column("Confidence", justify="right", style="cyan")
+
+    for c in candidates:
+        table.add_row(
+            c.term,
+            f"{c.z_score:.1f}z",
+            f"{c.burst_velocity:.1f}",
+            str(c.total_occurrences),
+            c.inferred_intent,
+            f"{c.inferred_valence:+.2f}",
+            f"{c.confidence:.0%}",
+        )
+
+    console.print(table)
+    console.print(f"[bold green]Updated adaptive lexicon saved to {lexicon} ({len(store.entries)} total cataloged terms)[/bold green]")
+
+
+@slang_app.command(name="list")
+def slang_list(
+    lexicon: Path = typer.Option(Path("./adaptive_lexicon.json"), "--lexicon", "-l", help="Path to adaptive lexicon store"),
+    status: Optional[str] = typer.Option(None, "--status", "-s", help="Filter by status (ACTIVE, PROMOTED, DECAYED)"),
+):
+    """List cataloged slang terms, inferred emotions, and temporal decay status."""
+    from stream_fusion.nlp.adaptive_slang import AdaptiveLexiconStore
+
+    if not lexicon.exists():
+        console.print(f"[yellow]Adaptive lexicon not found at {lexicon}[/yellow]")
+        return
+
+    store = AdaptiveLexiconStore(db_path=lexicon)
+    entries = store.entries.values()
+    if status:
+        entries = [e for e in entries if e.status.upper() == status.upper()]
+
+    if not entries:
+        console.print("[yellow]No slang entries found matching criteria.[/yellow]")
+        return
+
+    table = Table(title=f"Adaptive Slang Lexicon ({len(entries)} Terms)")
+    table.add_column("Term", style="bold cyan")
+    table.add_column("Intent", style="bold green")
+    table.add_column("Valence", justify="right", style="yellow")
+    table.add_column("Occurrences", justify="right", style="white")
+    table.add_column("Peak Z", justify="right", style="magenta")
+    table.add_column("Decayed Conf.", justify="right", style="cyan")
+    table.add_column("Status", style="white")
+
+    for e in sorted(entries, key=lambda x: x.occurrence_count, reverse=True):
+        cur_conf = e.compute_decayed_confidence()
+        st_style = "[bold green]" if e.status == "PROMOTED" else ("[cyan]" if e.status == "ACTIVE" else "[dim red]")
+        table.add_row(
+            e.term,
+            e.inferred_intent,
+            f"{e.valence:+.2f}",
+            str(e.occurrence_count),
+            f"{e.peak_z_score:.1f}z",
+            f"{cur_conf:.0%}",
+            f"{st_style}{e.status}[/]",
+        )
+
+    console.print(table)
+
+
+@slang_app.command(name="prune")
+def slang_prune(
+    lexicon: Path = typer.Option(Path("./adaptive_lexicon.json"), "--lexicon", "-l", help="Path to adaptive lexicon store"),
+    threshold: float = typer.Option(0.20, "--threshold", "-t", help="Confidence threshold below which decayed terms are removed"),
+):
+    """Prune inactive terms whose confidence has decayed below threshold."""
+    from stream_fusion.nlp.adaptive_slang import AdaptiveLexiconStore
+
+    if not lexicon.exists():
+        console.print(f"[yellow]Adaptive lexicon not found at {lexicon}[/yellow]")
+        return
+
+    store = AdaptiveLexiconStore(db_path=lexicon)
+    store.apply_temporal_decay()
+    pruned = store.prune_decayed(threshold=threshold)
+    store.save()
+    console.print(f"[bold green]Pruned {pruned} decayed terms. Remaining catalog size: {len(store.entries)} terms.[/bold green]")
+
+
 if __name__ == "__main__":
     app()
+
 
 
 

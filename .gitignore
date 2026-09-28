@@ -50,6 +50,8 @@ voiceprints.json
 *.bin
 *.onnx
 audit.db
+*.db
+adaptive_lexicon.json
 benchmark_output/
 
 # IDE & OS

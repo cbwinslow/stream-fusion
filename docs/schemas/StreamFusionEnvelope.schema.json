@@ -69,6 +69,8 @@
         "CLAIM_EXTRACTED",
         "SAFETY_ALERT",
         "WEB_READ_ALONG",
+        "SLANG_CANDIDATE_DETECTED",
+        "LEXICON_UPDATED",
         "AUDIT_BENCHMARK",
         "PIPELINE_COMPLETE",
         "ERROR"

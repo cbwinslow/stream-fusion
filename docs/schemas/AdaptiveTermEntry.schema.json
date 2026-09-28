@@ -1,0 +1,63 @@
+{
+  "properties": {
+    "term": {
+      "title": "Term",
+      "type": "string"
+    },
+    "inferred_intent": {
+      "title": "Inferred Intent",
+      "type": "string"
+    },
+    "valence": {
+      "default": 0.0,
+      "title": "Valence",
+      "type": "number"
+    },
+    "confidence": {
+      "default": 0.5,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "first_seen_timestamp": {
+      "title": "First Seen Timestamp",
+      "type": "string"
+    },
+    "last_seen_timestamp": {
+      "title": "Last Seen Timestamp",
+      "type": "string"
+    },
+    "occurrence_count": {
+      "default": 1,
+      "title": "Occurrence Count",
+      "type": "integer"
+    },
+    "unique_authors_count": {
+      "default": 1,
+      "title": "Unique Authors Count",
+      "type": "integer"
+    },
+    "peak_z_score": {
+      "default": 3.0,
+      "title": "Peak Z Score",
+      "type": "number"
+    },
+    "decay_half_life_days": {
+      "default": 14.0,
+      "title": "Decay Half Life Days",
+      "type": "number"
+    },
+    "status": {
+      "default": "ACTIVE",
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "term",
+    "inferred_intent",
+    "first_seen_timestamp",
+    "last_seen_timestamp"
+  ],
+  "title": "AdaptiveTermEntry",
+  "type": "object"
+}

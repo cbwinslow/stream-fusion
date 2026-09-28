@@ -1,0 +1,70 @@
+{
+  "properties": {
+    "term": {
+      "title": "Term",
+      "type": "string"
+    },
+    "burst_velocity": {
+      "title": "Burst Velocity",
+      "type": "number"
+    },
+    "z_score": {
+      "title": "Z Score",
+      "type": "number"
+    },
+    "total_occurrences": {
+      "title": "Total Occurrences",
+      "type": "integer"
+    },
+    "unique_authors": {
+      "title": "Unique Authors",
+      "type": "integer"
+    },
+    "window_start_sec": {
+      "title": "Window Start Sec",
+      "type": "number"
+    },
+    "window_end_sec": {
+      "title": "Window End Sec",
+      "type": "number"
+    },
+    "co_occurring_intents": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Co Occurring Intents",
+      "type": "object"
+    },
+    "inferred_intent": {
+      "default": "NEUTRAL",
+      "title": "Inferred Intent",
+      "type": "string"
+    },
+    "inferred_valence": {
+      "default": 0.0,
+      "title": "Inferred Valence",
+      "type": "number"
+    },
+    "acoustic_energy_boost": {
+      "default": 0.0,
+      "title": "Acoustic Energy Boost",
+      "type": "number"
+    },
+    "confidence": {
+      "default": 0.5,
+      "title": "Confidence",
+      "type": "number"
+    }
+  },
+  "required": [
+    "term",
+    "burst_velocity",
+    "z_score",
+    "total_occurrences",
+    "unique_authors",
+    "window_start_sec",
+    "window_end_sec"
+  ],
+  "title": "SlangCandidate",
+  "type": "object"
+}

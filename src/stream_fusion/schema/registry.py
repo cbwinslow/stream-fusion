@@ -49,6 +49,8 @@ class SchemaRegistry:
             "ScreenWebContext",
             "ScreenGameContext",
             "ReadAlongSegment",
+            "SlangCandidate",
+            "AdaptiveTermEntry",
         ]:
             if hasattr(model_schemas, name):
                 cls = getattr(model_schemas, name)
