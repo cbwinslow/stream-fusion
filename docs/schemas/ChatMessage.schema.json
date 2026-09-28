@@ -59,6 +59,12 @@
       },
       "title": "Badges",
       "type": "array"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "description": "Platform-specific metadata (superchats, bits, colors)",
+      "title": "Metadata",
+      "type": "object"
     }
   },
   "required": [

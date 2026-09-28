@@ -5,18 +5,22 @@
       "type": "string"
     },
     "creator_id": {
+      "default": "creator",
       "title": "Creator Id",
       "type": "string"
     },
     "vod_id": {
+      "default": "vod",
       "title": "Vod Id",
       "type": "string"
     },
     "timestamp_sec": {
+      "default": 0.0,
       "title": "Timestamp Sec",
       "type": "number"
     },
     "end_sec": {
+      "default": 0.0,
       "title": "End Sec",
       "type": "number"
     },
@@ -26,18 +30,22 @@
       "type": "string"
     },
     "subject_entity": {
+      "default": "",
       "title": "Subject Entity",
       "type": "string"
     },
     "predicate": {
+      "default": "",
       "title": "Predicate",
       "type": "string"
     },
     "object_value": {
+      "default": "",
       "title": "Object Value",
       "type": "string"
     },
     "stance": {
+      "default": "NEUTRAL",
       "title": "Stance",
       "type": "string"
     },
@@ -52,6 +60,7 @@
       "type": "number"
     },
     "raw_quote": {
+      "default": "",
       "title": "Raw Quote",
       "type": "string"
     },
@@ -76,19 +85,46 @@
       "default": false,
       "title": "Is Stance Reversal",
       "type": "boolean"
+    },
+    "subject": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Subject"
+    },
+    "statement": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Statement"
+    },
+    "object": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Object"
     }
   },
   "required": [
-    "claim_id",
-    "creator_id",
-    "vod_id",
-    "timestamp_sec",
-    "end_sec",
-    "subject_entity",
-    "predicate",
-    "object_value",
-    "stance",
-    "raw_quote"
+    "claim_id"
   ],
   "title": "StreamerClaim",
   "type": "object"

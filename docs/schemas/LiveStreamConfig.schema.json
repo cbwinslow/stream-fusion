@@ -99,6 +99,39 @@
       ],
       "default": null,
       "title": "Temp Dir"
+    },
+    "chatroom_id": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Direct Kick chatroom ID if known",
+      "title": "Chatroom Id"
+    },
+    "youtube_api_key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional YouTube Data API v3 key",
+      "title": "Youtube Api Key"
+    },
+    "custom_headers": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Custom Headers",
+      "type": "object"
     }
   },
   "required": [

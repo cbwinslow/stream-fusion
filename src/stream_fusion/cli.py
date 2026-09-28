@@ -1297,6 +1297,9 @@ def live_tail(
     ws_port: int = typer.Option(8765, "--ws-port", help="WebSocket broadcaster port"),
     sse_port: int = typer.Option(8766, "--sse-port", help="Server-Sent Events HTTP port"),
     anonymous: bool = typer.Option(True, "--anonymous/--auth", help="Connect to chat anonymously"),
+    chatroom_id: Optional[int] = typer.Option(None, "--chatroom-id", help="Direct Kick chatroom numeric ID"),
+    youtube_api_key: Optional[str] = typer.Option(None, "--yt-key", help="Optional YouTube Data API v3 key"),
+    stream_url: Optional[str] = typer.Option(None, "--stream-url", help="Direct stream or video URL"),
 ):
     """Start tailing a live broadcast with real-time rolling buffer and event broadcasting."""
     import asyncio
@@ -1308,10 +1311,13 @@ def live_tail(
     cfg = LiveStreamConfig(
         channel_name=channel,
         platform=plat_enum,
+        stream_url=stream_url,
         buffer_duration_sec=buffer,
         ws_port=ws_port,
         sse_port=sse_port,
         anonymous_chat=anonymous,
+        chatroom_id=chatroom_id,
+        youtube_api_key=youtube_api_key,
     )
     coord = LiveStreamCoordinator(config=cfg)
 

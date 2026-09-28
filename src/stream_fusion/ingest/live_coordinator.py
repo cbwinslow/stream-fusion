@@ -21,13 +21,15 @@ from stream_fusion.monitoring.broadcaster import LiveEventBroadcaster
 from stream_fusion.nlp.adaptive_slang import RollingBurstDetector
 from stream_fusion.schema.envelope import StreamFusionEnvelope
 
+from stream_fusion.connectors.registry import ConnectorRegistry
+
 logger = logging.getLogger(__name__)
 
 
 class LiveStreamCoordinator:
     """Master coordinator for real-time live ingestion and event broadcasting.
     
-    Orchestrates LiveStreamIngestor, LiveChatTailer, RollingBurstDetector,
+    Orchestrates LiveStreamIngestor, BaseChatConnector (Twitch, Kick, YouTube), RollingBurstDetector,
     and LiveEventBroadcaster into an unified live event pipeline.
     """
 
@@ -36,18 +38,16 @@ class LiveStreamCoordinator:
         config: LiveStreamConfig,
         broadcaster: Optional[LiveEventBroadcaster] = None,
         burst_detector: Optional[RollingBurstDetector] = None,
+        chat_connector: Optional[Any] = None,
     ):
         self.config = config
         self.stream_id = f"live-{config.channel_name}-{int(time.time())}"
         self.broadcaster = broadcaster or LiveEventBroadcaster(replay_capacity=config.max_replay_buffer_size)
         self.burst_detector = burst_detector or RollingBurstDetector(window_sec=10.0, z_threshold=3.0)
         self.ingestor = LiveStreamIngestor(config=config)
-        self.chat_tailer = LiveChatTailer(
-            channel_name=config.channel_name,
+        self.chat_tailer = chat_connector or ConnectorRegistry.create_chat_connector(
+            config=config,
             burst_detector=self.burst_detector,
-            anonymous=config.anonymous_chat,
-            nick=config.irc_nick,
-            oauth=config.irc_oauth,
         )
 
         self._state: LiveState = LiveState.STOPPED

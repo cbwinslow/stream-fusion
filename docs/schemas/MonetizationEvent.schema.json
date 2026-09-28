@@ -1,0 +1,60 @@
+{
+  "properties": {
+    "event_type": {
+      "description": "'SUPER_CHAT', 'BITS', 'GIFT_SUB', 'MEMBERSHIP'",
+      "title": "Event Type",
+      "type": "string"
+    },
+    "amount": {
+      "default": 0.0,
+      "title": "Amount",
+      "type": "number"
+    },
+    "currency": {
+      "default": "USD",
+      "title": "Currency",
+      "type": "string"
+    },
+    "raw_text": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Raw Text"
+    },
+    "tier": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Tier"
+    },
+    "sender_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sender Name"
+    }
+  },
+  "required": [
+    "event_type"
+  ],
+  "title": "MonetizationEvent",
+  "type": "object"
+}

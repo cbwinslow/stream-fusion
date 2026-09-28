@@ -67,6 +67,8 @@ class SchemaRegistry:
             "GroundedClaimResult",
             "StanceShiftRecord",
             "EntityOpinionSynthesis",
+            "PlatformCapabilities",
+            "MonetizationEvent",
         ]:
             if hasattr(model_schemas, name):
                 cls = getattr(model_schemas, name)
@@ -110,9 +112,10 @@ class SchemaRegistry:
         return cls.model_json_schema()
 
     def export_all_schemas(
-        self, output_dir: Path, fmt: str = "json"
+        self, output_dir: Any, fmt: str = "json"
     ) -> Dict[str, Path]:
         """Exports JSON-Schema definitions for all models into the target directory."""
+        output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         exported: Dict[str, Path] = {}
 

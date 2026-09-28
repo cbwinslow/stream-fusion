@@ -1,0 +1,59 @@
+{
+  "$defs": {
+    "LivePlatform": {
+      "enum": [
+        "TWITCH",
+        "KICK",
+        "YOUTUBE_LIVE",
+        "CUSTOM_HLS"
+      ],
+      "title": "LivePlatform",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "platform": {
+      "$ref": "#/$defs/LivePlatform"
+    },
+    "supports_emotes": {
+      "default": true,
+      "title": "Supports Emotes",
+      "type": "boolean"
+    },
+    "supports_badges": {
+      "default": true,
+      "title": "Supports Badges",
+      "type": "boolean"
+    },
+    "supports_superchats": {
+      "default": false,
+      "title": "Supports Superchats",
+      "type": "boolean"
+    },
+    "supports_bits": {
+      "default": false,
+      "title": "Supports Bits",
+      "type": "boolean"
+    },
+    "supports_subscriptions": {
+      "default": true,
+      "title": "Supports Subscriptions",
+      "type": "boolean"
+    },
+    "requires_api_key": {
+      "default": false,
+      "title": "Requires Api Key",
+      "type": "boolean"
+    },
+    "supports_anonymous": {
+      "default": true,
+      "title": "Supports Anonymous",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "platform"
+  ],
+  "title": "PlatformCapabilities",
+  "type": "object"
+}

@@ -21,6 +21,7 @@ class ChatMessage(BaseModel):
     content: str
     emotes: List[ChatEmote] = Field(default_factory=list)
     badges: List[str] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Platform-specific metadata (superchats, bits, colors)")
 
 
 class WordTiming(BaseModel):
@@ -523,6 +524,9 @@ class LiveStreamConfig(BaseModel):
     irc_oauth: Optional[str] = None
     max_replay_buffer_size: int = 250
     temp_dir: Optional[str] = None
+    chatroom_id: Optional[int] = Field(default=None, description="Direct Kick chatroom ID if known")
+    youtube_api_key: Optional[str] = Field(default=None, description="Optional YouTube Data API v3 key")
+    custom_headers: Dict[str, str] = Field(default_factory=dict)
 
 
 class LiveTailHealthMetrics(BaseModel):
@@ -616,6 +620,37 @@ class EntityOpinionSynthesis(BaseModel):
     contradictions: List[Dict[str, Any]] = Field(default_factory=list)
     summary: str
     synthesized_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+# --- Spec 22: Multi-Platform Live Stream & Chat Connectors ---
+
+class ConnectorState(str, Enum):
+    STOPPED = "STOPPED"
+    STARTING = "STARTING"
+    RUNNING = "RUNNING"
+    RECONNECTING = "RECONNECTING"
+    ERROR = "ERROR"
+
+
+class PlatformCapabilities(BaseModel):
+    platform: LivePlatform
+    supports_emotes: bool = True
+    supports_badges: bool = True
+    supports_superchats: bool = False
+    supports_bits: bool = False
+    supports_subscriptions: bool = True
+    requires_api_key: bool = False
+    supports_anonymous: bool = True
+
+
+class MonetizationEvent(BaseModel):
+    event_type: str = Field(..., description="'SUPER_CHAT', 'BITS', 'GIFT_SUB', 'MEMBERSHIP'")
+    amount: float = 0.0
+    currency: str = "USD"
+    raw_text: Optional[str] = None
+    tier: Optional[str] = None
+    sender_name: Optional[str] = None
+
 
 
 
