@@ -1,0 +1,36 @@
+{
+  "properties": {
+    "fps": {
+      "default": 0.0,
+      "title": "Fps",
+      "type": "number"
+    },
+    "chat_messages_per_sec": {
+      "default": 0.0,
+      "title": "Chat Messages Per Sec",
+      "type": "number"
+    },
+    "buffer_latency_sec": {
+      "default": 0.0,
+      "title": "Buffer Latency Sec",
+      "type": "number"
+    },
+    "dropped_frames": {
+      "default": 0,
+      "title": "Dropped Frames",
+      "type": "integer"
+    },
+    "buffered_seconds": {
+      "default": 0.0,
+      "title": "Buffered Seconds",
+      "type": "number"
+    },
+    "memory_mb": {
+      "default": 0.0,
+      "title": "Memory Mb",
+      "type": "number"
+    }
+  },
+  "title": "LiveTailHealthMetrics",
+  "type": "object"
+}

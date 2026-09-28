@@ -253,21 +253,42 @@ class BrigadeCluster(BaseModel):
 
 class StreamerClaim(BaseModel):
     claim_id: str
-    creator_id: str
-    vod_id: str
-    timestamp_sec: float
-    end_sec: float
+    creator_id: str = "creator"
+    vod_id: str = "vod"
+    timestamp_sec: float = 0.0
+    end_sec: float = 0.0
     topic_category: str = "GENERAL"
-    subject_entity: str
-    predicate: str
-    object_value: str
-    stance: str  # "APPROVAL", "DISAPPROVAL", "NEUTRAL"
+    subject_entity: str = ""
+    predicate: str = ""
+    object_value: str = ""
+    stance: str = "NEUTRAL"  # "APPROVAL", "DISAPPROVAL", "NEUTRAL"
     polarity: float = 0.0  # -1.0 to +1.0
     confidence: float = 1.0
-    raw_quote: str
+    raw_quote: str = ""
     visual_context_summary: str = ""
     supersedes_claim_id: Optional[str] = None
     is_stance_reversal: bool = False
+
+    # Aliases for convenience across Spec 13, Spec 14, and Spec 20
+    subject: Optional[str] = None
+    statement: Optional[str] = None
+    object: Optional[str] = None
+
+    def model_post_init(self, __context: Any) -> None:
+        if self.subject and not self.subject_entity:
+            self.subject_entity = self.subject
+        elif self.subject_entity and not self.subject:
+            self.subject = self.subject_entity
+
+        if self.statement and not self.raw_quote:
+            self.raw_quote = self.statement
+        elif self.raw_quote and not self.statement:
+            self.statement = self.raw_quote
+
+        if self.object and not self.object_value:
+            self.object_value = self.object
+        elif self.object_value and not self.object:
+            self.object = self.object_value
 
 
 class EntityStanceRecord(BaseModel):
@@ -469,6 +490,134 @@ class PublishResult(BaseModel):
     post_url: Optional[str] = None
     published_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     payload_snapshot: Dict[str, Any] = Field(default_factory=dict)
+
+
+# --- Spec 19: Real-Time Live Ingestion & WebSocket Stream Tailing ---
+
+class LivePlatform(str, Enum):
+    TWITCH = "TWITCH"
+    KICK = "KICK"
+    YOUTUBE_LIVE = "YOUTUBE_LIVE"
+    CUSTOM_HLS = "CUSTOM_HLS"
+
+
+class LiveState(str, Enum):
+    STOPPED = "STOPPED"
+    STARTING = "STARTING"
+    RUNNING = "RUNNING"
+    PAUSED = "PAUSED"
+    STOPPING = "STOPPING"
+    ERROR = "ERROR"
+
+
+class LiveStreamConfig(BaseModel):
+    channel_name: str
+    platform: LivePlatform = LivePlatform.TWITCH
+    stream_url: Optional[str] = None
+    buffer_duration_sec: float = Field(default=120.0, description="Depth of rolling video buffer")
+    microbatch_duration_sec: float = Field(default=10.0, description="Duration per micro-batch sliding window")
+    ws_port: int = 8765
+    sse_port: int = 8766
+    anonymous_chat: bool = True
+    irc_nick: Optional[str] = None
+    irc_oauth: Optional[str] = None
+    max_replay_buffer_size: int = 250
+    temp_dir: Optional[str] = None
+
+
+class LiveTailHealthMetrics(BaseModel):
+    fps: float = 0.0
+    chat_messages_per_sec: float = 0.0
+    buffer_latency_sec: float = 0.0
+    dropped_frames: int = 0
+    buffered_seconds: float = 0.0
+    memory_mb: float = 0.0
+
+
+class LiveStreamStatus(BaseModel):
+    stream_id: str
+    state: LiveState = LiveState.STOPPED
+    channel_name: str
+    platform: LivePlatform
+    uptime_sec: float = 0.0
+    total_bytes_ingested: int = 0
+    total_chat_messages: int = 0
+    active_subscribers: int = 0
+    health: LiveTailHealthMetrics = Field(default_factory=LiveTailHealthMetrics)
+    last_error: Optional[str] = None
+    started_at: Optional[datetime] = None
+
+
+class LiveClientSubscription(BaseModel):
+    client_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    transport: str = "WEBSOCKET"  # or "SSE"
+    event_types: List[str] = Field(default_factory=lambda: ["*"])
+    connected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    replay_count: int = 0
+
+
+# --- Spec 20: Web Grounding & Live Knowledge Graph Expansion ---
+
+class StancePolarity(str, Enum):
+    POSITIVE = "POSITIVE"
+    NEGATIVE = "NEGATIVE"
+    NEUTRAL = "NEUTRAL"
+    MIXED = "MIXED"
+
+
+class FactCheckVerdict(str, Enum):
+    VERIFIED_TRUE = "VERIFIED_TRUE"
+    CONTRADICTED = "CONTRADICTED"
+    UNSUBSTANTIATED = "UNSUBSTANTIATED"
+    OUTDATED = "OUTDATED"
+    UNVERIFIABLE = "UNVERIFIABLE"
+
+
+class WebGroundingCitation(BaseModel):
+    url: str
+    domain: str
+    title: str
+    snippet: str
+    published_date: Optional[str] = None
+    confidence_score: float = Field(default=0.8, ge=0.0, le=1.0)
+
+
+class GroundedClaimResult(BaseModel):
+    claim_id: str
+    verdict: FactCheckVerdict
+    search_query: str
+    citations: List[WebGroundingCitation] = Field(default_factory=list)
+    explanation: str
+    verified_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    original_claim_statement: Optional[str] = None
+
+
+class StanceShiftRecord(BaseModel):
+    shift_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    entity_name: str
+    previous_stance: str  # e.g. POSITIVE, NEGATIVE, NEUTRAL
+    new_stance: str
+    shift_delta: float = 0.0  # -2.0 to +2.0
+    previous_stream_id: str
+    new_stream_id: str
+    evidence_quote_before: str
+    evidence_quote_after: str
+    is_reversal: bool = False
+    detected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class EntityOpinionSynthesis(BaseModel):
+    entity_name: str
+    overall_consensus_stance: str
+    total_claims_count: int = 0
+    contradiction_count: int = 0
+    volatility_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    stance_timeline: List[Dict[str, Any]] = Field(default_factory=list)
+    contradictions: List[Dict[str, Any]] = Field(default_factory=list)
+    summary: str
+    synthesized_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 
 
 

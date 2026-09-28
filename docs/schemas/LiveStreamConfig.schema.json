@@ -1,0 +1,109 @@
+{
+  "$defs": {
+    "LivePlatform": {
+      "enum": [
+        "TWITCH",
+        "KICK",
+        "YOUTUBE_LIVE",
+        "CUSTOM_HLS"
+      ],
+      "title": "LivePlatform",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "channel_name": {
+      "title": "Channel Name",
+      "type": "string"
+    },
+    "platform": {
+      "$ref": "#/$defs/LivePlatform",
+      "default": "TWITCH"
+    },
+    "stream_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Stream Url"
+    },
+    "buffer_duration_sec": {
+      "default": 120.0,
+      "description": "Depth of rolling video buffer",
+      "title": "Buffer Duration Sec",
+      "type": "number"
+    },
+    "microbatch_duration_sec": {
+      "default": 10.0,
+      "description": "Duration per micro-batch sliding window",
+      "title": "Microbatch Duration Sec",
+      "type": "number"
+    },
+    "ws_port": {
+      "default": 8765,
+      "title": "Ws Port",
+      "type": "integer"
+    },
+    "sse_port": {
+      "default": 8766,
+      "title": "Sse Port",
+      "type": "integer"
+    },
+    "anonymous_chat": {
+      "default": true,
+      "title": "Anonymous Chat",
+      "type": "boolean"
+    },
+    "irc_nick": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Irc Nick"
+    },
+    "irc_oauth": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Irc Oauth"
+    },
+    "max_replay_buffer_size": {
+      "default": 250,
+      "title": "Max Replay Buffer Size",
+      "type": "integer"
+    },
+    "temp_dir": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Temp Dir"
+    }
+  },
+  "required": [
+    "channel_name"
+  ],
+  "title": "LiveStreamConfig",
+  "type": "object"
+}

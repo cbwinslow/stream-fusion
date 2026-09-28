@@ -1,0 +1,62 @@
+{
+  "properties": {
+    "shift_id": {
+      "title": "Shift Id",
+      "type": "string"
+    },
+    "entity_name": {
+      "title": "Entity Name",
+      "type": "string"
+    },
+    "previous_stance": {
+      "title": "Previous Stance",
+      "type": "string"
+    },
+    "new_stance": {
+      "title": "New Stance",
+      "type": "string"
+    },
+    "shift_delta": {
+      "default": 0.0,
+      "title": "Shift Delta",
+      "type": "number"
+    },
+    "previous_stream_id": {
+      "title": "Previous Stream Id",
+      "type": "string"
+    },
+    "new_stream_id": {
+      "title": "New Stream Id",
+      "type": "string"
+    },
+    "evidence_quote_before": {
+      "title": "Evidence Quote Before",
+      "type": "string"
+    },
+    "evidence_quote_after": {
+      "title": "Evidence Quote After",
+      "type": "string"
+    },
+    "is_reversal": {
+      "default": false,
+      "title": "Is Reversal",
+      "type": "boolean"
+    },
+    "detected_at": {
+      "format": "date-time",
+      "title": "Detected At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "entity_name",
+    "previous_stance",
+    "new_stance",
+    "previous_stream_id",
+    "new_stream_id",
+    "evidence_quote_before",
+    "evidence_quote_after"
+  ],
+  "title": "StanceShiftRecord",
+  "type": "object"
+}

@@ -1,0 +1,47 @@
+{
+  "properties": {
+    "url": {
+      "title": "Url",
+      "type": "string"
+    },
+    "domain": {
+      "title": "Domain",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "snippet": {
+      "title": "Snippet",
+      "type": "string"
+    },
+    "published_date": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Published Date"
+    },
+    "confidence_score": {
+      "default": 0.8,
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Confidence Score",
+      "type": "number"
+    }
+  },
+  "required": [
+    "url",
+    "domain",
+    "title",
+    "snippet"
+  ],
+  "title": "WebGroundingCitation",
+  "type": "object"
+}

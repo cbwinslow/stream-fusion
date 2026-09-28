@@ -1,0 +1,61 @@
+{
+  "properties": {
+    "entity_name": {
+      "title": "Entity Name",
+      "type": "string"
+    },
+    "overall_consensus_stance": {
+      "title": "Overall Consensus Stance",
+      "type": "string"
+    },
+    "total_claims_count": {
+      "default": 0,
+      "title": "Total Claims Count",
+      "type": "integer"
+    },
+    "contradiction_count": {
+      "default": 0,
+      "title": "Contradiction Count",
+      "type": "integer"
+    },
+    "volatility_score": {
+      "default": 0.0,
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Volatility Score",
+      "type": "number"
+    },
+    "stance_timeline": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Stance Timeline",
+      "type": "array"
+    },
+    "contradictions": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Contradictions",
+      "type": "array"
+    },
+    "summary": {
+      "title": "Summary",
+      "type": "string"
+    },
+    "synthesized_at": {
+      "format": "date-time",
+      "title": "Synthesized At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "entity_name",
+    "overall_consensus_stance",
+    "summary"
+  ],
+  "title": "EntityOpinionSynthesis",
+  "type": "object"
+}

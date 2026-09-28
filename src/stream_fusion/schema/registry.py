@@ -59,6 +59,14 @@ class SchemaRegistry:
             "ViralityScoreCard",
             "ShortProductionPackage",
             "PublishResult",
+            "LiveStreamConfig",
+            "LiveTailHealthMetrics",
+            "LiveStreamStatus",
+            "LiveClientSubscription",
+            "WebGroundingCitation",
+            "GroundedClaimResult",
+            "StanceShiftRecord",
+            "EntityOpinionSynthesis",
         ]:
             if hasattr(model_schemas, name):
                 cls = getattr(model_schemas, name)

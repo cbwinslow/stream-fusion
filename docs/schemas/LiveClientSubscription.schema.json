@@ -1,0 +1,32 @@
+{
+  "properties": {
+    "client_id": {
+      "title": "Client Id",
+      "type": "string"
+    },
+    "transport": {
+      "default": "WEBSOCKET",
+      "title": "Transport",
+      "type": "string"
+    },
+    "event_types": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Event Types",
+      "type": "array"
+    },
+    "connected_at": {
+      "format": "date-time",
+      "title": "Connected At",
+      "type": "string"
+    },
+    "replay_count": {
+      "default": 0,
+      "title": "Replay Count",
+      "type": "integer"
+    }
+  },
+  "title": "LiveClientSubscription",
+  "type": "object"
+}

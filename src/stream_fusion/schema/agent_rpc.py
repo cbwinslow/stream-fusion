@@ -21,6 +21,9 @@ class AgentRpcDispatcher:
         self.store = store or SqliteJsonStore()
         self.registry = registry or default_schema_registry
         self._handlers: Dict[str, Callable[[Dict[str, Any]], Any]] = {}
+        self._live_coordinators: Dict[str, Any] = {}
+        self._stance_tracker: Optional[Any] = None
+        self._web_grounder: Optional[Any] = None
         self._register_default_handlers()
 
     def _register_default_handlers(self) -> None:
@@ -36,6 +39,12 @@ class AgentRpcDispatcher:
         self.register_handler("streamfusion.produceShorts", self._handle_produce_shorts)
         self.register_handler("streamfusion.listShorts", self._handle_list_shorts)
         self.register_handler("streamfusion.publishShort", self._handle_publish_short)
+        self.register_handler("streamfusion.startLiveTail", self._handle_start_live_tail)
+        self.register_handler("streamfusion.getLiveStatus", self._handle_get_live_status)
+        self.register_handler("streamfusion.stopLiveTail", self._handle_stop_live_tail)
+        self.register_handler("streamfusion.groundClaim", self._handle_ground_claim)
+        self.register_handler("streamfusion.queryStanceShifts", self._handle_query_stance_shifts)
+        self.register_handler("streamfusion.synthesizeEntityOpinions", self._handle_synthesize_entity_opinions)
 
     def register_handler(
         self, method: str, handler: Callable[[Dict[str, Any]], Any]
@@ -342,5 +351,71 @@ class AgentRpcDispatcher:
             self.store.append_envelope(env)
 
         return [r.model_dump(mode="json") for r in pub_results]
+
+    def _handle_start_live_tail(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        from stream_fusion.models.schemas import LiveStreamConfig
+        from stream_fusion.ingest.live_coordinator import LiveStreamCoordinator
+        config = LiveStreamConfig.model_validate(params)
+        coordinator = LiveStreamCoordinator(config=config)
+        self._live_coordinators[coordinator.stream_id] = coordinator
+        return coordinator.get_status().model_dump(mode="json")
+
+    def _handle_get_live_status(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        stream_id = params.get("stream_id")
+        if not stream_id or stream_id not in self._live_coordinators:
+            raise ValueError(f"Active live coordinator '{stream_id}' not found")
+        coord = self._live_coordinators[stream_id]
+        return coord.get_status().model_dump(mode="json")
+
+    def _handle_stop_live_tail(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        import asyncio
+        stream_id = params.get("stream_id")
+        if not stream_id or stream_id not in self._live_coordinators:
+            raise ValueError(f"Active live coordinator '{stream_id}' not found")
+        coord = self._live_coordinators.pop(stream_id)
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(coord.stop())
+        except RuntimeError:
+            asyncio.run(coord.stop())
+        return coord.get_status().model_dump(mode="json")
+
+    def _handle_ground_claim(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        from stream_fusion.models.schemas import StreamerClaim
+        from stream_fusion.knowledge.web_grounding import LiveWebGroundingEngine
+
+        claim_data = params.get("claim")
+        if not claim_data:
+            raise ValueError("Must provide 'claim' object to ground")
+        claim = StreamerClaim.model_validate(claim_data)
+        if self._web_grounder is None:
+            self._web_grounder = LiveWebGroundingEngine()
+        res = self._web_grounder.ground_claim(claim)
+        return res.model_dump(mode="json")
+
+    def _handle_query_stance_shifts(self, params: Dict[str, Any]) -> List[Dict[str, Any]]:
+        from stream_fusion.knowledge.temporal_stance import TemporalStanceShiftTracker
+
+        entity = params.get("entity")
+        if not entity:
+            raise ValueError("Must provide 'entity' parameter")
+        if self._stance_tracker is None:
+            self._stance_tracker = TemporalStanceShiftTracker()
+        shifts = self._stance_tracker.detect_shifts(entity)
+        return [s.model_dump(mode="json") for s in shifts]
+
+    def _handle_synthesize_entity_opinions(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        from stream_fusion.knowledge.temporal_stance import TemporalStanceShiftTracker, CrossStreamOpinionSynthesizer
+
+        entity = params.get("entity")
+        if not entity:
+            raise ValueError("Must provide 'entity' parameter")
+        if self._stance_tracker is None:
+            self._stance_tracker = TemporalStanceShiftTracker()
+        synthesizer = CrossStreamOpinionSynthesizer(tracker=self._stance_tracker)
+        syn = synthesizer.synthesize(entity)
+        return syn.model_dump(mode="json")
+
+
 
 

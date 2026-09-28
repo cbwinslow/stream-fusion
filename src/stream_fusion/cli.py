@@ -1278,6 +1278,206 @@ def shorts_list(
     console.print(table)
 
 
+# ---------------------------------------------------------------------------
+# Real-Time Live Ingestion & WebSocket Stream Tailing (Spec 19)
+# ---------------------------------------------------------------------------
+live_app = typer.Typer(
+    name="live",
+    help="Real-Time Live Stream Ingestion & WebSocket/SSE Tailing Commands",
+    no_args_is_help=True,
+)
+app.add_typer(live_app, name="live")
+
+
+@live_app.command(name="tail")
+def live_tail(
+    channel: str = typer.Argument(..., help="Streamer channel name or handle (e.g. asmongold)"),
+    platform: str = typer.Option("TWITCH", "--platform", "-p", help="Streaming platform (TWITCH, KICK, YOUTUBE_LIVE)"),
+    buffer: float = typer.Option(120.0, "--buffer", "-b", help="Depth of rolling video/audio buffer in seconds"),
+    ws_port: int = typer.Option(8765, "--ws-port", help="WebSocket broadcaster port"),
+    sse_port: int = typer.Option(8766, "--sse-port", help="Server-Sent Events HTTP port"),
+    anonymous: bool = typer.Option(True, "--anonymous/--auth", help="Connect to chat anonymously"),
+):
+    """Start tailing a live broadcast with real-time rolling buffer and event broadcasting."""
+    import asyncio
+    from stream_fusion.models.schemas import LiveStreamConfig, LivePlatform
+    from stream_fusion.ingest.live_coordinator import LiveStreamCoordinator
+
+    console.print(f"[bold purple]StreamFusion Live Tailer[/bold purple]: Tailing channel [bold cyan]{channel}[/bold cyan] ({platform})")
+    plat_enum = LivePlatform(platform.upper()) if platform.upper() in LivePlatform.__members__ else LivePlatform.TWITCH
+    cfg = LiveStreamConfig(
+        channel_name=channel,
+        platform=plat_enum,
+        buffer_duration_sec=buffer,
+        ws_port=ws_port,
+        sse_port=sse_port,
+        anonymous_chat=anonymous,
+    )
+    coord = LiveStreamCoordinator(config=cfg)
+
+    async def run():
+        await coord.start()
+        console.print(f"[bold green][OK] Live Tailer running on ws://localhost:{ws_port} and http://localhost:{ws_port}/events[/bold green]")
+        console.print("[dim]Press Ctrl+C to terminate session...[/dim]")
+        try:
+            while coord.state.value == "RUNNING":
+                await asyncio.sleep(2.0)
+                st = coord.get_status()
+                console.print(
+                    f"  [cyan]Uptime:[/] {st.uptime_sec:.0f}s | "
+                    f"[green]Chat Msgs:[/] {st.total_chat_messages} ({st.health.chat_messages_per_sec:.1f} msg/s) | "
+                    f"[yellow]Subscribers:[/] {st.active_subscribers} | "
+                    f"[magenta]Memory:[/] {st.health.memory_mb:.1f} MB"
+                )
+        except (KeyboardInterrupt, asyncio.CancelledError):
+            pass
+        finally:
+            console.print("\n[bold yellow]Stopping Live Stream Coordinator...[/bold yellow]")
+            await coord.stop()
+            console.print("[bold green][OK] Stopped cleanly.[/bold green]")
+
+    try:
+        asyncio.run(run())
+    except KeyboardInterrupt:
+        pass
+
+
+@live_app.command(name="status")
+def live_status():
+    """Query active live tailing status."""
+    console.print("[dim]No local background daemon running. Use 'streamfusion live tail' to launch interactive session.[/dim]")
+
+
+# ---------------------------------------------------------------------------
+# Web Grounding & Live Knowledge Graph Expansion (Spec 20)
+# ---------------------------------------------------------------------------
+knowledge_app = typer.Typer(
+    name="knowledge",
+    help="Web Grounding & Live Knowledge Graph Expansion Commands",
+    no_args_is_help=True,
+)
+app.add_typer(knowledge_app, name="knowledge")
+
+
+@knowledge_app.command(name="ground")
+def knowledge_ground(
+    claims_path: Path = typer.Argument(..., help="Path to JSON file containing extracted claims"),
+    output: Optional[Path] = typer.Option(None, "--out", "-o", help="Optional output path for grounded claims JSON"),
+):
+    """Ground and fact-check extracted claims against web search citations."""
+    import json
+    from stream_fusion.models.schemas import StreamerClaim
+    from stream_fusion.knowledge.web_grounding import LiveWebGroundingEngine
+
+    if not claims_path.exists():
+        console.print(f"[bold red]Claims file not found: {claims_path}[/bold red]")
+        raise typer.Exit(code=1)
+
+    try:
+        raw_data = json.loads(claims_path.read_text(encoding="utf-8"))
+        if isinstance(raw_data, dict) and "claims" in raw_data:
+            claims_list = [StreamerClaim.model_validate(c) for c in raw_data["claims"]]
+        elif isinstance(raw_data, list):
+            claims_list = [StreamerClaim.model_validate(c) for c in raw_data]
+        else:
+            claims_list = [StreamerClaim.model_validate(raw_data)]
+    except Exception as e:
+        console.print(f"[bold red]Failed to parse claims: {e}[/bold red]")
+        raise typer.Exit(code=1)
+
+    engine = LiveWebGroundingEngine()
+    results = []
+
+    table = Table(title=f"🌐 Web Grounding & Fact-Check Audit ({len(claims_list)} claims)")
+    table.add_column("Claim ID", style="bold cyan")
+    table.add_column("Subject", style="white")
+    table.add_column("Verdict", justify="center")
+    table.add_column("Citations", justify="right", style="green")
+    table.add_column("Explanation", style="dim")
+
+    for c in claims_list:
+        res = engine.ground_claim(c)
+        results.append(res)
+        color = {
+            "VERIFIED_TRUE": "bold green",
+            "CONTRADICTED": "bold red",
+            "OUTDATED": "bold yellow",
+            "UNSUBSTANTIATED": "bold magenta",
+        }.get(res.verdict.value, "white")
+
+        table.add_row(
+            res.claim_id[:12],
+            c.subject,
+            f"[{color}]{res.verdict.value}[/]",
+            str(len(res.citations)),
+            res.explanation[:60] + "...",
+        )
+
+    console.print(table)
+
+    if output:
+        out_data = [r.model_dump(mode="json") for r in results]
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(out_data, indent=2), encoding="utf-8")
+        console.print(f"[bold green][OK] Grounded results saved to: {output}[/bold green]")
+
+
+@knowledge_app.command(name="shifts")
+def knowledge_shifts(
+    entity: str = typer.Option(..., "--entity", "-e", help="Target entity name to query (e.g. Blizzard, WoW)"),
+    db: Path = typer.Option(Path("./stance_history.json"), "--db", help="Path to stance history JSON"),
+):
+    """Query temporal stance shifts and reversals across multiple stream broadcasts."""
+    from stream_fusion.knowledge.temporal_stance import TemporalStanceShiftTracker
+
+    tracker = TemporalStanceShiftTracker(storage_path=db)
+    shifts = tracker.detect_shifts(entity)
+
+    if not shifts:
+        console.print(f"[yellow]No stance shifts recorded for entity '{entity}'.[/yellow]")
+        return
+
+    table = Table(title=f"🔄 Temporal Stance Shifts for '{entity}' ({len(shifts)} shifts)")
+    table.add_column("Shift ID", style="bold cyan")
+    table.add_column("Transition", justify="center")
+    table.add_column("Delta", justify="right")
+    table.add_column("Reversal?", justify="center")
+    table.add_column("Earlier Quote -> Later Quote", style="white")
+
+    for s in shifts:
+        rev_str = "[bold red]YES[/]" if s.is_reversal else "[dim]NO[/]"
+        delta_str = f"[bold green]+{s.shift_delta:.2f}[/]" if s.shift_delta > 0 else f"[bold red]{s.shift_delta:.2f}[/]"
+        table.add_row(
+            s.shift_id[:8],
+            f"{s.previous_stance} -> {s.new_stance}",
+            delta_str,
+            rev_str,
+            f'"{s.evidence_quote_before[:30]}..." -> "{s.evidence_quote_after[:30]}..."',
+        )
+
+    console.print(table)
+
+
+@knowledge_app.command(name="synthesize")
+def knowledge_synthesize(
+    entity: str = typer.Option(..., "--entity", "-e", help="Target entity name to synthesize"),
+    db: Path = typer.Option(Path("./stance_history.json"), "--db", help="Path to stance history JSON"),
+):
+    """Generate longitudinal opinion synthesis and consensus brief for an entity."""
+    from rich.panel import Panel
+    from stream_fusion.knowledge.temporal_stance import TemporalStanceShiftTracker, CrossStreamOpinionSynthesizer
+
+    tracker = TemporalStanceShiftTracker(storage_path=db)
+    synthesizer = CrossStreamOpinionSynthesizer(tracker=tracker)
+    syn = synthesizer.synthesize(entity)
+
+    console.print(Panel(
+        syn.summary,
+        title=f"📊 Opinion Synthesis: {entity} (Consensus: {syn.overall_consensus_stance})",
+        border_style="cyan",
+    ))
+
+
 if __name__ == "__main__":
     app()
 

@@ -1,0 +1,111 @@
+{
+  "$defs": {
+    "FactCheckVerdict": {
+      "enum": [
+        "VERIFIED_TRUE",
+        "CONTRADICTED",
+        "UNSUBSTANTIATED",
+        "OUTDATED",
+        "UNVERIFIABLE"
+      ],
+      "title": "FactCheckVerdict",
+      "type": "string"
+    },
+    "WebGroundingCitation": {
+      "properties": {
+        "url": {
+          "title": "Url",
+          "type": "string"
+        },
+        "domain": {
+          "title": "Domain",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "snippet": {
+          "title": "Snippet",
+          "type": "string"
+        },
+        "published_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Published Date"
+        },
+        "confidence_score": {
+          "default": 0.8,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence Score",
+          "type": "number"
+        }
+      },
+      "required": [
+        "url",
+        "domain",
+        "title",
+        "snippet"
+      ],
+      "title": "WebGroundingCitation",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "claim_id": {
+      "title": "Claim Id",
+      "type": "string"
+    },
+    "verdict": {
+      "$ref": "#/$defs/FactCheckVerdict"
+    },
+    "search_query": {
+      "title": "Search Query",
+      "type": "string"
+    },
+    "citations": {
+      "items": {
+        "$ref": "#/$defs/WebGroundingCitation"
+      },
+      "title": "Citations",
+      "type": "array"
+    },
+    "explanation": {
+      "title": "Explanation",
+      "type": "string"
+    },
+    "verified_at": {
+      "format": "date-time",
+      "title": "Verified At",
+      "type": "string"
+    },
+    "original_claim_statement": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Original Claim Statement"
+    }
+  },
+  "required": [
+    "claim_id",
+    "verdict",
+    "search_query",
+    "explanation"
+  ],
+  "title": "GroundedClaimResult",
+  "type": "object"
+}
