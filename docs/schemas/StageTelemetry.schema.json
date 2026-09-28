@@ -1,0 +1,79 @@
+{
+  "properties": {
+    "stage_name": {
+      "title": "Stage Name",
+      "type": "string"
+    },
+    "duration_sec": {
+      "title": "Duration Sec",
+      "type": "number"
+    },
+    "start_time_iso": {
+      "title": "Start Time Iso",
+      "type": "string"
+    },
+    "end_time_iso": {
+      "title": "End Time Iso",
+      "type": "string"
+    },
+    "ram_mb_peak": {
+      "title": "Ram Mb Peak",
+      "type": "number"
+    },
+    "vram_mb_peak": {
+      "title": "Vram Mb Peak",
+      "type": "number"
+    },
+    "status": {
+      "default": "SUCCESS",
+      "title": "Status",
+      "type": "string"
+    },
+    "error_message": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Error Message"
+    },
+    "throughput_metric_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Throughput Metric Name"
+    },
+    "throughput_value": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Throughput Value"
+    }
+  },
+  "required": [
+    "stage_name",
+    "duration_sec",
+    "start_time_iso",
+    "end_time_iso",
+    "ram_mb_peak",
+    "vram_mb_peak"
+  ],
+  "title": "StageTelemetry",
+  "type": "object"
+}

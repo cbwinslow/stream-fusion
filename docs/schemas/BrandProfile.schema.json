@@ -1,0 +1,39 @@
+{
+  "properties": {
+    "brand_id": {
+      "title": "Brand Id",
+      "type": "string"
+    },
+    "brand_name": {
+      "title": "Brand Name",
+      "type": "string"
+    },
+    "aliases": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Aliases",
+      "type": "array"
+    },
+    "promo_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Promo Codes",
+      "type": "array"
+    },
+    "product_keywords": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Product Keywords",
+      "type": "array"
+    }
+  },
+  "required": [
+    "brand_id",
+    "brand_name"
+  ],
+  "title": "BrandProfile",
+  "type": "object"
+}

@@ -1,0 +1,27 @@
+{
+  "properties": {
+    "label": {
+      "title": "Label",
+      "type": "string"
+    },
+    "confidence": {
+      "title": "Confidence",
+      "type": "number"
+    },
+    "box": {
+      "description": "[ymin, xmin, ymax, xmax] normalized",
+      "items": {
+        "type": "number"
+      },
+      "title": "Box",
+      "type": "array"
+    }
+  },
+  "required": [
+    "label",
+    "confidence",
+    "box"
+  ],
+  "title": "BoundingBox",
+  "type": "object"
+}

@@ -1,0 +1,25 @@
+{
+  "properties": {
+    "primary_intent": {
+      "title": "Primary Intent",
+      "type": "string"
+    },
+    "intent_scores": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Intent Scores",
+      "type": "object"
+    },
+    "valence": {
+      "default": 0.0,
+      "title": "Valence",
+      "type": "number"
+    }
+  },
+  "required": [
+    "primary_intent"
+  ],
+  "title": "ChatIntentDistribution",
+  "type": "object"
+}

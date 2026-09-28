@@ -1,0 +1,40 @@
+{
+  "properties": {
+    "platform": {
+      "default": "X_TWITTER",
+      "title": "Platform",
+      "type": "string"
+    },
+    "author_handle": {
+      "title": "Author Handle",
+      "type": "string"
+    },
+    "author_name": {
+      "title": "Author Name",
+      "type": "string"
+    },
+    "post_text": {
+      "title": "Post Text",
+      "type": "string"
+    },
+    "bounding_box": {
+      "items": {
+        "type": "number"
+      },
+      "title": "Bounding Box",
+      "type": "array"
+    },
+    "has_embedded_media": {
+      "default": false,
+      "title": "Has Embedded Media",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "author_handle",
+    "author_name",
+    "post_text"
+  ],
+  "title": "SocialPostCard",
+  "type": "object"
+}

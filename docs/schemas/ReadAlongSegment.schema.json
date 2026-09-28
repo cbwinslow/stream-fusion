@@ -1,0 +1,50 @@
+{
+  "properties": {
+    "start_sec": {
+      "title": "Start Sec",
+      "type": "number"
+    },
+    "end_sec": {
+      "title": "End Sec",
+      "type": "number"
+    },
+    "spoken_text": {
+      "title": "Spoken Text",
+      "type": "string"
+    },
+    "matched_screen_text": {
+      "title": "Matched Screen Text",
+      "type": "string"
+    },
+    "alignment_score": {
+      "title": "Alignment Score",
+      "type": "number"
+    },
+    "reading_wpm": {
+      "title": "Reading Wpm",
+      "type": "number"
+    },
+    "source_handle": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Handle"
+    }
+  },
+  "required": [
+    "start_sec",
+    "end_sec",
+    "spoken_text",
+    "matched_screen_text",
+    "alignment_score",
+    "reading_wpm"
+  ],
+  "title": "ReadAlongSegment",
+  "type": "object"
+}

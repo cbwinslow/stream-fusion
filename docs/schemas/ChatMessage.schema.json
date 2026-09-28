@@ -1,0 +1,73 @@
+{
+  "$defs": {
+    "ChatEmote": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "count": {
+          "default": 1,
+          "title": "Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "title": "ChatEmote",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "message_id": {
+      "title": "Message Id",
+      "type": "string"
+    },
+    "timestamp_offset": {
+      "description": "Seconds offset from stream start",
+      "title": "Timestamp Offset",
+      "type": "number"
+    },
+    "user_id": {
+      "title": "User Id",
+      "type": "string"
+    },
+    "author_name": {
+      "title": "Author Name",
+      "type": "string"
+    },
+    "content": {
+      "title": "Content",
+      "type": "string"
+    },
+    "emotes": {
+      "items": {
+        "$ref": "#/$defs/ChatEmote"
+      },
+      "title": "Emotes",
+      "type": "array"
+    },
+    "badges": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Badges",
+      "type": "array"
+    }
+  },
+  "required": [
+    "message_id",
+    "timestamp_offset",
+    "user_id",
+    "author_name",
+    "content"
+  ],
+  "title": "ChatMessage",
+  "type": "object"
+}

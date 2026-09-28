@@ -1,0 +1,23 @@
+{
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "count": {
+      "default": 1,
+      "title": "Count",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "id",
+    "name"
+  ],
+  "title": "ChatEmote",
+  "type": "object"
+}

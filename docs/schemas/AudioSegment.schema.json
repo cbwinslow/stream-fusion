@@ -1,0 +1,84 @@
+{
+  "$defs": {
+    "WordTiming": {
+      "properties": {
+        "word": {
+          "title": "Word",
+          "type": "string"
+        },
+        "start": {
+          "title": "Start",
+          "type": "number"
+        },
+        "end": {
+          "title": "End",
+          "type": "number"
+        },
+        "probability": {
+          "default": 1.0,
+          "title": "Probability",
+          "type": "number"
+        }
+      },
+      "required": [
+        "word",
+        "start",
+        "end"
+      ],
+      "title": "WordTiming",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "segment_id": {
+      "title": "Segment Id",
+      "type": "integer"
+    },
+    "start_sec": {
+      "title": "Start Sec",
+      "type": "number"
+    },
+    "end_sec": {
+      "title": "End Sec",
+      "type": "number"
+    },
+    "speaker_label": {
+      "description": "Identified speaker, e.g. 'STREAMER', 'EXTERNAL_VIDEO', 'UNKNOWN'",
+      "title": "Speaker Label",
+      "type": "string"
+    },
+    "transcript": {
+      "title": "Transcript",
+      "type": "string"
+    },
+    "confidence": {
+      "default": 1.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "words": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/WordTiming"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Words"
+    }
+  },
+  "required": [
+    "segment_id",
+    "start_sec",
+    "end_sec",
+    "speaker_label",
+    "transcript"
+  ],
+  "title": "AudioSegment",
+  "type": "object"
+}

@@ -1,0 +1,95 @@
+{
+  "properties": {
+    "claim_id": {
+      "title": "Claim Id",
+      "type": "string"
+    },
+    "creator_id": {
+      "title": "Creator Id",
+      "type": "string"
+    },
+    "vod_id": {
+      "title": "Vod Id",
+      "type": "string"
+    },
+    "timestamp_sec": {
+      "title": "Timestamp Sec",
+      "type": "number"
+    },
+    "end_sec": {
+      "title": "End Sec",
+      "type": "number"
+    },
+    "topic_category": {
+      "default": "GENERAL",
+      "title": "Topic Category",
+      "type": "string"
+    },
+    "subject_entity": {
+      "title": "Subject Entity",
+      "type": "string"
+    },
+    "predicate": {
+      "title": "Predicate",
+      "type": "string"
+    },
+    "object_value": {
+      "title": "Object Value",
+      "type": "string"
+    },
+    "stance": {
+      "title": "Stance",
+      "type": "string"
+    },
+    "polarity": {
+      "default": 0.0,
+      "title": "Polarity",
+      "type": "number"
+    },
+    "confidence": {
+      "default": 1.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "raw_quote": {
+      "title": "Raw Quote",
+      "type": "string"
+    },
+    "visual_context_summary": {
+      "default": "",
+      "title": "Visual Context Summary",
+      "type": "string"
+    },
+    "supersedes_claim_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Claim Id"
+    },
+    "is_stance_reversal": {
+      "default": false,
+      "title": "Is Stance Reversal",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "claim_id",
+    "creator_id",
+    "vod_id",
+    "timestamp_sec",
+    "end_sec",
+    "subject_entity",
+    "predicate",
+    "object_value",
+    "stance",
+    "raw_quote"
+  ],
+  "title": "StreamerClaim",
+  "type": "object"
+}

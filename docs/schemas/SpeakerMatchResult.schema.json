@@ -1,0 +1,35 @@
+{
+  "properties": {
+    "assigned_label": {
+      "title": "Assigned Label",
+      "type": "string"
+    },
+    "creator_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Creator Id"
+    },
+    "confidence": {
+      "default": 0.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "is_known_creator": {
+      "default": false,
+      "title": "Is Known Creator",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "assigned_label"
+  ],
+  "title": "SpeakerMatchResult",
+  "type": "object"
+}

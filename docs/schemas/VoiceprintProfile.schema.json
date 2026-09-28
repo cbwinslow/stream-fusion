@@ -1,0 +1,54 @@
+{
+  "properties": {
+    "creator_id": {
+      "title": "Creator Id",
+      "type": "string"
+    },
+    "display_name": {
+      "title": "Display Name",
+      "type": "string"
+    },
+    "primary_channel": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Primary Channel"
+    },
+    "centroid_embedding": {
+      "description": "Normalized speaker d-vector",
+      "items": {
+        "type": "number"
+      },
+      "title": "Centroid Embedding",
+      "type": "array"
+    },
+    "sample_count": {
+      "default": 1,
+      "title": "Sample Count",
+      "type": "integer"
+    },
+    "confidence_threshold": {
+      "default": 0.76,
+      "title": "Confidence Threshold",
+      "type": "number"
+    },
+    "last_updated": {
+      "default": "",
+      "title": "Last Updated",
+      "type": "string"
+    }
+  },
+  "required": [
+    "creator_id",
+    "display_name",
+    "centroid_embedding"
+  ],
+  "title": "VoiceprintProfile",
+  "type": "object"
+}

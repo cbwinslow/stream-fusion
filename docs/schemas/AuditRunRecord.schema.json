@@ -1,0 +1,210 @@
+{
+  "$defs": {
+    "RegressionAlert": {
+      "properties": {
+        "metric_name": {
+          "title": "Metric Name",
+          "type": "string"
+        },
+        "stage_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stage Name"
+        },
+        "current_value": {
+          "title": "Current Value",
+          "type": "number"
+        },
+        "baseline_value": {
+          "title": "Baseline Value",
+          "type": "number"
+        },
+        "relative_change": {
+          "title": "Relative Change",
+          "type": "number"
+        },
+        "severity": {
+          "title": "Severity",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric_name",
+        "current_value",
+        "baseline_value",
+        "relative_change",
+        "severity",
+        "description"
+      ],
+      "title": "RegressionAlert",
+      "type": "object"
+    },
+    "StageTelemetry": {
+      "properties": {
+        "stage_name": {
+          "title": "Stage Name",
+          "type": "string"
+        },
+        "duration_sec": {
+          "title": "Duration Sec",
+          "type": "number"
+        },
+        "start_time_iso": {
+          "title": "Start Time Iso",
+          "type": "string"
+        },
+        "end_time_iso": {
+          "title": "End Time Iso",
+          "type": "string"
+        },
+        "ram_mb_peak": {
+          "title": "Ram Mb Peak",
+          "type": "number"
+        },
+        "vram_mb_peak": {
+          "title": "Vram Mb Peak",
+          "type": "number"
+        },
+        "status": {
+          "default": "SUCCESS",
+          "title": "Status",
+          "type": "string"
+        },
+        "error_message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Message"
+        },
+        "throughput_metric_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Throughput Metric Name"
+        },
+        "throughput_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Throughput Value"
+        }
+      },
+      "required": [
+        "stage_name",
+        "duration_sec",
+        "start_time_iso",
+        "end_time_iso",
+        "ram_mb_peak",
+        "vram_mb_peak"
+      ],
+      "title": "StageTelemetry",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "git_commit": {
+      "default": "unknown",
+      "title": "Git Commit",
+      "type": "string"
+    },
+    "git_dirty": {
+      "default": false,
+      "title": "Git Dirty",
+      "type": "boolean"
+    },
+    "timestamp": {
+      "default": "",
+      "title": "Timestamp",
+      "type": "string"
+    },
+    "stream_id": {
+      "title": "Stream Id",
+      "type": "string"
+    },
+    "media_duration_sec": {
+      "title": "Media Duration Sec",
+      "type": "number"
+    },
+    "total_pipeline_duration_sec": {
+      "title": "Total Pipeline Duration Sec",
+      "type": "number"
+    },
+    "overall_real_time_factor": {
+      "title": "Overall Real Time Factor",
+      "type": "number"
+    },
+    "stages": {
+      "additionalProperties": {
+        "$ref": "#/$defs/StageTelemetry"
+      },
+      "title": "Stages",
+      "type": "object"
+    },
+    "quality_metrics": {
+      "additionalProperties": true,
+      "title": "Quality Metrics",
+      "type": "object"
+    },
+    "regressions_detected": {
+      "items": {
+        "$ref": "#/$defs/RegressionAlert"
+      },
+      "title": "Regressions Detected",
+      "type": "array"
+    },
+    "recommendations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Recommendations",
+      "type": "array"
+    },
+    "status": {
+      "default": "SUCCESS",
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "run_id",
+    "stream_id",
+    "media_duration_sec",
+    "total_pipeline_duration_sec",
+    "overall_real_time_factor"
+  ],
+  "title": "AuditRunRecord",
+  "type": "object"
+}

@@ -1,0 +1,41 @@
+{
+  "properties": {
+    "cluster_id": {
+      "title": "Cluster Id",
+      "type": "string"
+    },
+    "window_start_sec": {
+      "title": "Window Start Sec",
+      "type": "number"
+    },
+    "window_end_sec": {
+      "title": "Window End Sec",
+      "type": "number"
+    },
+    "participant_user_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Participant User Ids",
+      "type": "array"
+    },
+    "similarity_score": {
+      "title": "Similarity Score",
+      "type": "number"
+    },
+    "flagged_phrase": {
+      "title": "Flagged Phrase",
+      "type": "string"
+    }
+  },
+  "required": [
+    "cluster_id",
+    "window_start_sec",
+    "window_end_sec",
+    "participant_user_ids",
+    "similarity_score",
+    "flagged_phrase"
+  ],
+  "title": "BrigadeCluster",
+  "type": "object"
+}

@@ -1,0 +1,50 @@
+{
+  "properties": {
+    "metric_name": {
+      "title": "Metric Name",
+      "type": "string"
+    },
+    "stage_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Stage Name"
+    },
+    "current_value": {
+      "title": "Current Value",
+      "type": "number"
+    },
+    "baseline_value": {
+      "title": "Baseline Value",
+      "type": "number"
+    },
+    "relative_change": {
+      "title": "Relative Change",
+      "type": "number"
+    },
+    "severity": {
+      "title": "Severity",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "type": "string"
+    }
+  },
+  "required": [
+    "metric_name",
+    "current_value",
+    "baseline_value",
+    "relative_change",
+    "severity",
+    "description"
+  ],
+  "title": "RegressionAlert",
+  "type": "object"
+}

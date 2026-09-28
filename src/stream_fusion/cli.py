@@ -696,7 +696,223 @@ def audit_compare(
         console.print("[bold green]Zero regressions detected. Current run matches or exceeds baseline performance![/bold green]")
 
 
+# ---------------------------------------------------------------------------
+# Unified JSON Schema Registry Subcommands (Spec 16)
+# ---------------------------------------------------------------------------
+schema_app = typer.Typer(
+    name="schema",
+    help="Unified JSON-Schema Registry, Validation, and Export Commands",
+    no_args_is_help=True,
+)
+app.add_typer(schema_app, name="schema")
+
+
+@schema_app.command(name="list")
+def schema_list():
+    """List all registered StreamFusion data schemas and envelope types."""
+    from stream_fusion.schema.registry import default_schema_registry
+    schemas = default_schema_registry.list_schemas()
+
+    table = Table(title=f"StreamFusion Schema Registry ({len(schemas)} Schemas)")
+    table.add_column("Schema Name", style="bold cyan")
+    table.add_column("Module Source", style="dim")
+    table.add_column("Description", style="white")
+
+    for s in schemas:
+        table.add_row(s["schema_name"], s["module"], s["description"])
+
+    console.print(table)
+
+
+@schema_app.command(name="export")
+def schema_export(
+    out_dir: Path = typer.Option(Path("./docs/schemas"), "--out-dir", "-o", help="Directory to save JSON/YAML schemas"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Specific model name to export (default: all)"),
+    fmt: str = typer.Option("json", "--format", "-f", help="Output format: 'json' or 'yaml'"),
+):
+    """Export Draft-07 / 2020-12 JSON-Schema definitions for data models."""
+    import json
+    import yaml
+    from stream_fusion.schema.registry import default_schema_registry
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    if model:
+        cls = default_schema_registry.get_model(model)
+        if not cls:
+            console.print(f"[bold red]Error: Schema '{model}' not found in registry.[/bold red]")
+            raise typer.Exit(code=1)
+        schema_dict = default_schema_registry.export_json_schema(model)
+        ext = "yaml" if fmt.lower() in ("yaml", "yml") else "json"
+        out_file = out_dir / f"{model}.schema.{ext}"
+        with open(out_file, "w", encoding="utf-8") as f:
+            if ext == "yaml":
+                yaml.dump(schema_dict, f, sort_keys=False)
+            else:
+                json.dump(schema_dict, f, indent=2)
+        console.print(f"[bold green]Exported schema for {model} to {out_file}[/bold green]")
+    else:
+        exported = default_schema_registry.export_all_schemas(output_dir=out_dir, fmt=fmt)
+        console.print(f"[bold green]Successfully exported {len(exported)} schemas to {out_dir} (format: {fmt})[/bold green]")
+
+
+@schema_app.command(name="validate")
+def schema_validate(
+    schema_name: str = typer.Argument(..., help="Registered schema name (e.g. FusionSlice, StreamerClaim)"),
+    file: Path = typer.Argument(..., help="Path to JSON file to validate"),
+):
+    """Validate a JSON file against a registered StreamFusion schema."""
+    import json
+    from stream_fusion.schema.registry import default_schema_registry
+
+    if not file.exists():
+        console.print(f"[bold red]Error: File {file} does not exist.[/bold red]")
+        raise typer.Exit(code=1)
+
+    try:
+        with open(file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as e:
+        console.print(f"[bold red]Error decoding JSON: {e}[/bold red]")
+        raise typer.Exit(code=1)
+
+    is_valid, err, _ = default_schema_registry.validate_data(schema_name, data)
+    if is_valid:
+        console.print(f"[bold green][OK] File {file.name} conforms strictly to schema '{schema_name}'[/bold green]")
+    else:
+        console.print(f"[bold red][FAIL] Validation failed for schema '{schema_name}':\n{err}[/bold red]")
+        raise typer.Exit(code=1)
+
+
+# ---------------------------------------------------------------------------
+# Agent Communication & JSON-RPC Protocol Subcommands (Spec 16)
+# ---------------------------------------------------------------------------
+agent_app = typer.Typer(
+    name="agent",
+    help="Agent Communication, JSON-RPC 2.0 Dispatcher, and Stream Query Commands",
+    no_args_is_help=True,
+)
+app.add_typer(agent_app, name="agent")
+
+
+@agent_app.command(name="query")
+def agent_query(
+    db: Path = typer.Option(Path("./stream_events.db"), "--db", help="Path to SQLite events store"),
+    stream_id: Optional[str] = typer.Option(None, "--stream-id", "-s", help="Filter by stream ID"),
+    event_type: Optional[str] = typer.Option(None, "--event-type", "-e", help="Filter by event type"),
+    filter_json: Optional[str] = typer.Option(None, "--filter", "-f", help="JSON string of payload attribute filters"),
+    limit: int = typer.Option(20, "--limit", "-n", help="Max events to return"),
+    json_out: bool = typer.Option(False, "--json", help="Output raw JSON instead of table"),
+):
+    """Query stream events using SQLite JSON1 attribute filtering."""
+    import json
+    from stream_fusion.schema.adapters import SqliteJsonStore
+    from stream_fusion.schema.envelope import StreamEventType
+
+    if not db.exists():
+        console.print(f"[yellow]Database {db} not found.[/yellow]")
+        return
+
+    store = SqliteJsonStore(db_path=db)
+    parsed_filters = json.loads(filter_json) if filter_json else None
+    ev_type = StreamEventType(event_type) if event_type else None
+
+    events = store.query_events(
+        stream_id=stream_id,
+        event_type=ev_type,
+        json_filters=parsed_filters,
+        limit=limit,
+    )
+
+    if json_out:
+        out_payload = [e.model_dump() for e in events]
+        console.print(json.dumps(out_payload, indent=2))
+        return
+
+    table = Table(title=f"Stream Events Query Results ({len(events)} returned)")
+    table.add_column("Timestamp", style="dim")
+    table.add_column("Stream ID", style="cyan")
+    table.add_column("Event Type", style="bold green")
+    table.add_column("Producer", style="dim")
+    table.add_column("Payload Preview", style="white")
+
+    for e in events:
+        p_preview = json.dumps(e.payload)[:60] + "..." if e.payload else "{}"
+        table.add_row(
+            e.timestamp[:19].replace("T", " "),
+            e.stream_id,
+            e.event_type.value,
+            e.producer or "-",
+            p_preview,
+        )
+
+    console.print(table)
+
+
+@agent_app.command(name="summary")
+def agent_summary(
+    stream_id: str = typer.Argument(..., help="Stream ID to summarize"),
+    db: Path = typer.Option(Path("./stream_events.db"), "--db", help="Path to SQLite events store"),
+    json_out: bool = typer.Option(False, "--json", help="Output raw JSON instead of table"),
+):
+    """Retrieve an aggregated high-level event summary for a stream."""
+    import json
+    from stream_fusion.schema.agent_rpc import AgentRpcDispatcher
+    from stream_fusion.schema.adapters import SqliteJsonStore
+
+    if not db.exists():
+        console.print(f"[yellow]Database {db} not found.[/yellow]")
+        return
+
+    store = SqliteJsonStore(db_path=db)
+    dispatcher = AgentRpcDispatcher(store=store)
+    req = {
+        "jsonrpc": "2.0",
+        "method": "streamfusion.getStreamSummary",
+        "params": {"stream_id": stream_id},
+        "id": 1,
+    }
+    resp = dispatcher.handle_request(req)
+
+    if json_out or "error" in resp:
+        console.print(json.dumps(resp, indent=2))
+        return
+
+    data = resp.get("result", {})
+    table = Table(title=f"Stream Summary: {stream_id}")
+    table.add_column("Metric / Category", style="cyan")
+    table.add_column("Count", justify="right", style="bold green")
+
+    table.add_row("Total Envelopes", str(data.get("total_events", 0)))
+    counts = data.get("counts", {})
+    for k, v in counts.items():
+        table.add_row(f"Events: {k}", str(v))
+
+    console.print(table)
+
+
+@agent_app.command(name="rpc")
+def agent_rpc(
+    db: Path = typer.Option(Path("./stream_events.db"), "--db", help="Path to SQLite events store"),
+):
+    """Run JSON-RPC 2.0 loop over stdin/stdout for subagent communication."""
+    import sys
+    from stream_fusion.schema.agent_rpc import AgentRpcDispatcher
+    from stream_fusion.schema.adapters import SqliteJsonStore
+
+    store = SqliteJsonStore(db_path=db)
+    dispatcher = AgentRpcDispatcher(store=store)
+
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        resp_line = dispatcher.handle_line(line)
+        sys.stdout.write(resp_line + "\n")
+        sys.stdout.flush()
+
+
 if __name__ == "__main__":
     app()
+
 
 

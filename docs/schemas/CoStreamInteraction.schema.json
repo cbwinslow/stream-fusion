@@ -1,0 +1,48 @@
+{
+  "properties": {
+    "host_creator": {
+      "title": "Host Creator",
+      "type": "string"
+    },
+    "guest_creator": {
+      "title": "Guest Creator",
+      "type": "string"
+    },
+    "vod_id": {
+      "title": "Vod Id",
+      "type": "string"
+    },
+    "interaction_start_sec": {
+      "title": "Interaction Start Sec",
+      "type": "number"
+    },
+    "interaction_end_sec": {
+      "title": "Interaction End Sec",
+      "type": "number"
+    },
+    "total_spoken_duration_sec": {
+      "title": "Total Spoken Duration Sec",
+      "type": "number"
+    },
+    "game_or_activity": {
+      "default": "UNKNOWN",
+      "title": "Game Or Activity",
+      "type": "string"
+    },
+    "timestamp": {
+      "default": "",
+      "title": "Timestamp",
+      "type": "string"
+    }
+  },
+  "required": [
+    "host_creator",
+    "guest_creator",
+    "vod_id",
+    "interaction_start_sec",
+    "interaction_end_sec",
+    "total_spoken_duration_sec"
+  ],
+  "title": "CoStreamInteraction",
+  "type": "object"
+}

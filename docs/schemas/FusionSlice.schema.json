@@ -1,0 +1,172 @@
+{
+  "properties": {
+    "bucket_index": {
+      "title": "Bucket Index",
+      "type": "integer"
+    },
+    "start_sec": {
+      "title": "Start Sec",
+      "type": "number"
+    },
+    "end_sec": {
+      "title": "End Sec",
+      "type": "number"
+    },
+    "active_speakers": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Active Speakers",
+      "type": "array"
+    },
+    "streamer_transcript": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Streamer Transcript"
+    },
+    "external_audio_transcript": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "External Audio Transcript"
+    },
+    "active_scene_type": {
+      "default": "UNKNOWN",
+      "title": "Active Scene Type",
+      "type": "string"
+    },
+    "visual_description": {
+      "default": "",
+      "title": "Visual Description",
+      "type": "string"
+    },
+    "screen_ocr": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Screen Ocr",
+      "type": "array"
+    },
+    "chat_message_count": {
+      "default": 0,
+      "title": "Chat Message Count",
+      "type": "integer"
+    },
+    "chat_velocity_per_sec": {
+      "default": 0.0,
+      "title": "Chat Velocity Per Sec",
+      "type": "number"
+    },
+    "dominant_emotes": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Dominant Emotes",
+      "type": "object"
+    },
+    "chat_sentiment_polarity": {
+      "default": 0.0,
+      "description": "-1.0 (very negative) to +1.0 (very positive)",
+      "title": "Chat Sentiment Polarity",
+      "type": "number"
+    },
+    "is_spike_moment": {
+      "default": false,
+      "title": "Is Spike Moment",
+      "type": "boolean"
+    },
+    "agreement_score": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Agreement Score"
+    },
+    "speaker_identities": {
+      "description": "Resolved creator IDs, e.g. ['STREAMER:theburntpeanut', 'CO_STREAMER:hutchmf']",
+      "items": {
+        "type": "string"
+      },
+      "title": "Speaker Identities",
+      "type": "array"
+    },
+    "chat_intents": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "description": "Fine-grained emotion intents from Spec 08",
+      "title": "Chat Intents",
+      "type": "object"
+    },
+    "active_sponsor_brand": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Active sponsor detected in this window (Spec 09)",
+      "title": "Active Sponsor Brand"
+    },
+    "griefer_messages_flagged": {
+      "default": 0,
+      "description": "Count of bad-faith contrarian/griefer messages (Spec 12)",
+      "title": "Griefer Messages Flagged",
+      "type": "integer"
+    },
+    "active_domain": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Active web domain being browsed, e.g. 'x.com' (Spec 14)",
+      "title": "Active Domain"
+    },
+    "read_along_text": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "On-screen text being read aloud by streamer (Spec 14)",
+      "title": "Read Along Text"
+    }
+  },
+  "required": [
+    "bucket_index",
+    "start_sec",
+    "end_sec"
+  ],
+  "title": "FusionSlice",
+  "type": "object"
+}

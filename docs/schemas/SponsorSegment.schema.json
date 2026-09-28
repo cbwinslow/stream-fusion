@@ -1,0 +1,42 @@
+{
+  "properties": {
+    "segment_id": {
+      "title": "Segment Id",
+      "type": "integer"
+    },
+    "brand_id": {
+      "title": "Brand Id",
+      "type": "string"
+    },
+    "start_sec": {
+      "title": "Start Sec",
+      "type": "number"
+    },
+    "end_sec": {
+      "title": "End Sec",
+      "type": "number"
+    },
+    "matched_audio_transcripts": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Matched Audio Transcripts",
+      "type": "array"
+    },
+    "matched_ocr_texts": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Matched Ocr Texts",
+      "type": "array"
+    }
+  },
+  "required": [
+    "segment_id",
+    "brand_id",
+    "start_sec",
+    "end_sec"
+  ],
+  "title": "SponsorSegment",
+  "type": "object"
+}

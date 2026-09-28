@@ -1,0 +1,110 @@
+{
+  "$defs": {
+    "SocialPostCard": {
+      "properties": {
+        "platform": {
+          "default": "X_TWITTER",
+          "title": "Platform",
+          "type": "string"
+        },
+        "author_handle": {
+          "title": "Author Handle",
+          "type": "string"
+        },
+        "author_name": {
+          "title": "Author Name",
+          "type": "string"
+        },
+        "post_text": {
+          "title": "Post Text",
+          "type": "string"
+        },
+        "bounding_box": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Bounding Box",
+          "type": "array"
+        },
+        "has_embedded_media": {
+          "default": false,
+          "title": "Has Embedded Media",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "author_handle",
+        "author_name",
+        "post_text"
+      ],
+      "title": "SocialPostCard",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "timestamp_sec": {
+      "title": "Timestamp Sec",
+      "type": "number"
+    },
+    "browser_detected": {
+      "default": false,
+      "title": "Browser Detected",
+      "type": "boolean"
+    },
+    "detected_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Detected Url"
+    },
+    "domain": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Domain"
+    },
+    "active_tab_title": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Active Tab Title"
+    },
+    "social_post_cards": {
+      "items": {
+        "$ref": "#/$defs/SocialPostCard"
+      },
+      "title": "Social Post Cards",
+      "type": "array"
+    },
+    "article_headlines": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Article Headlines",
+      "type": "array"
+    }
+  },
+  "required": [
+    "timestamp_sec"
+  ],
+  "title": "ScreenWebContext",
+  "type": "object"
+}

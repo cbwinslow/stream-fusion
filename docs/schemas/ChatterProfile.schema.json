@@ -1,0 +1,38 @@
+{
+  "properties": {
+    "user_id": {
+      "title": "User Id",
+      "type": "string"
+    },
+    "author_name": {
+      "title": "Author Name",
+      "type": "string"
+    },
+    "total_messages": {
+      "default": 0,
+      "title": "Total Messages",
+      "type": "integer"
+    },
+    "first_meme_origin_count": {
+      "default": 0,
+      "title": "First Meme Origin Count",
+      "type": "integer"
+    },
+    "streamer_response_count": {
+      "default": 0,
+      "title": "Streamer Response Count",
+      "type": "integer"
+    },
+    "influence_score": {
+      "default": 0.0,
+      "title": "Influence Score",
+      "type": "number"
+    }
+  },
+  "required": [
+    "user_id",
+    "author_name"
+  ],
+  "title": "ChatterProfile",
+  "type": "object"
+}

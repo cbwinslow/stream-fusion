@@ -1,0 +1,63 @@
+{
+  "properties": {
+    "user_id": {
+      "title": "User Id",
+      "type": "string"
+    },
+    "username": {
+      "title": "Username",
+      "type": "string"
+    },
+    "first_seen_at": {
+      "title": "First Seen At",
+      "type": "string"
+    },
+    "last_seen_at": {
+      "title": "Last Seen At",
+      "type": "string"
+    },
+    "total_messages": {
+      "default": 0,
+      "title": "Total Messages",
+      "type": "integer"
+    },
+    "contrarian_index": {
+      "default": 0.0,
+      "title": "Contrarian Index",
+      "type": "number"
+    },
+    "hostility_index": {
+      "default": 0.0,
+      "title": "Hostility Index",
+      "type": "number"
+    },
+    "banter_reciprocity": {
+      "default": 0.0,
+      "title": "Banter Reciprocity",
+      "type": "number"
+    },
+    "griefer_score": {
+      "default": 0.0,
+      "title": "Griefer Score",
+      "type": "number"
+    },
+    "flagged_status": {
+      "default": "CLEAN",
+      "title": "Flagged Status",
+      "type": "string"
+    },
+    "is_automated_bot": {
+      "default": false,
+      "title": "Is Automated Bot",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "user_id",
+    "username",
+    "first_seen_at",
+    "last_seen_at"
+  ],
+  "title": "ChatterDetailedProfile",
+  "type": "object"
+}

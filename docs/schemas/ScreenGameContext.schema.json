@@ -1,0 +1,76 @@
+{
+  "properties": {
+    "timestamp_sec": {
+      "title": "Timestamp Sec",
+      "type": "number"
+    },
+    "game_title_hint": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Game Title Hint"
+    },
+    "minimap_box": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Minimap Box"
+    },
+    "health_percentage": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Health Percentage"
+    },
+    "mana_percentage": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Mana Percentage"
+    },
+    "killfeed_entries": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Killfeed Entries",
+      "type": "array"
+    },
+    "inventory_open": {
+      "default": false,
+      "title": "Inventory Open",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "timestamp_sec"
+  ],
+  "title": "ScreenGameContext",
+  "type": "object"
+}

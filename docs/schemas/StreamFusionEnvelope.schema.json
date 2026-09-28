@@ -1,0 +1,165 @@
+{
+  "$defs": {
+    "EnvelopeTelemetry": {
+      "description": "Lightweight stage and resource telemetry embedded in envelopes.",
+      "properties": {
+        "duration_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duration Ms"
+        },
+        "stage": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stage"
+        },
+        "ram_mb": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ram Mb"
+        },
+        "vram_mb": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vram Mb"
+        }
+      },
+      "title": "EnvelopeTelemetry",
+      "type": "object"
+    },
+    "StreamEventType": {
+      "description": "Standardized event types across the StreamFusion pipeline and agent bus.",
+      "enum": [
+        "STAGE_START",
+        "STAGE_COMPLETE",
+        "AUDIO_SEGMENT",
+        "KEYFRAME_ANALYSIS",
+        "FUSION_SLICE",
+        "CHAT_BURST",
+        "HIGHLIGHT_MOMENT",
+        "SPONSOR_DETECTED",
+        "CLAIM_EXTRACTED",
+        "SAFETY_ALERT",
+        "WEB_READ_ALONG",
+        "AUDIT_BENCHMARK",
+        "PIPELINE_COMPLETE",
+        "ERROR"
+      ],
+      "title": "StreamEventType",
+      "type": "string"
+    }
+  },
+  "description": "Standardized JSON envelope for all inter-module and inter-agent communication.",
+  "properties": {
+    "version": {
+      "default": "1.0",
+      "title": "Version",
+      "type": "string"
+    },
+    "message_id": {
+      "title": "Message Id",
+      "type": "string"
+    },
+    "timestamp": {
+      "title": "Timestamp",
+      "type": "string"
+    },
+    "stream_id": {
+      "title": "Stream Id",
+      "type": "string"
+    },
+    "event_type": {
+      "$ref": "#/$defs/StreamEventType"
+    },
+    "trace_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Trace Id"
+    },
+    "parent_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Parent Id"
+    },
+    "producer": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Producer"
+    },
+    "payload": {
+      "default": null,
+      "title": "Payload"
+    },
+    "telemetry": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EnvelopeTelemetry"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    }
+  },
+  "required": [
+    "stream_id",
+    "event_type"
+  ],
+  "title": "StreamFusionEnvelope",
+  "type": "object"
+}

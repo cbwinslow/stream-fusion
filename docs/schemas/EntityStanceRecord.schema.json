@@ -1,0 +1,45 @@
+{
+  "properties": {
+    "creator_id": {
+      "title": "Creator Id",
+      "type": "string"
+    },
+    "subject_entity": {
+      "title": "Subject Entity",
+      "type": "string"
+    },
+    "aggregate_polarity": {
+      "title": "Aggregate Polarity",
+      "type": "number"
+    },
+    "overall_stance": {
+      "title": "Overall Stance",
+      "type": "string"
+    },
+    "claims_count": {
+      "title": "Claims Count",
+      "type": "integer"
+    },
+    "sub_attributes": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Sub Attributes",
+      "type": "object"
+    },
+    "last_updated": {
+      "default": "",
+      "title": "Last Updated",
+      "type": "string"
+    }
+  },
+  "required": [
+    "creator_id",
+    "subject_entity",
+    "aggregate_polarity",
+    "overall_stance",
+    "claims_count"
+  ],
+  "title": "EntityStanceRecord",
+  "type": "object"
+}

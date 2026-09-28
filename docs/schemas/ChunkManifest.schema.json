@@ -1,0 +1,50 @@
+{
+  "properties": {
+    "stream_id": {
+      "title": "Stream Id",
+      "type": "string"
+    },
+    "chunk_duration_sec": {
+      "default": 300.0,
+      "title": "Chunk Duration Sec",
+      "type": "number"
+    },
+    "total_chunks_expected": {
+      "default": 0,
+      "title": "Total Chunks Expected",
+      "type": "integer"
+    },
+    "completed_chunks": {
+      "items": {
+        "type": "integer"
+      },
+      "title": "Completed Chunks",
+      "type": "array"
+    },
+    "status": {
+      "default": "IN_PROGRESS",
+      "title": "Status",
+      "type": "string"
+    },
+    "last_updated": {
+      "default": "",
+      "title": "Last Updated",
+      "type": "string"
+    },
+    "chunk_files": {
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "title": "Chunk Files",
+      "type": "object"
+    }
+  },
+  "required": [
+    "stream_id"
+  ],
+  "title": "ChunkManifest",
+  "type": "object"
+}

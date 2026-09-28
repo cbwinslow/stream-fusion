@@ -1,0 +1,116 @@
+{
+  "$defs": {
+    "SponsorSegment": {
+      "properties": {
+        "segment_id": {
+          "title": "Segment Id",
+          "type": "integer"
+        },
+        "brand_id": {
+          "title": "Brand Id",
+          "type": "string"
+        },
+        "start_sec": {
+          "title": "Start Sec",
+          "type": "number"
+        },
+        "end_sec": {
+          "title": "End Sec",
+          "type": "number"
+        },
+        "matched_audio_transcripts": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Matched Audio Transcripts",
+          "type": "array"
+        },
+        "matched_ocr_texts": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Matched Ocr Texts",
+          "type": "array"
+        }
+      },
+      "required": [
+        "segment_id",
+        "brand_id",
+        "start_sec",
+        "end_sec"
+      ],
+      "title": "SponsorSegment",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "brand_id": {
+      "title": "Brand Id",
+      "type": "string"
+    },
+    "brand_name": {
+      "title": "Brand Name",
+      "type": "string"
+    },
+    "sponsor_segment": {
+      "$ref": "#/$defs/SponsorSegment"
+    },
+    "chat_mention_count": {
+      "title": "Chat Mention Count",
+      "type": "integer"
+    },
+    "mention_velocity": {
+      "title": "Mention Velocity",
+      "type": "number"
+    },
+    "window_start_sec": {
+      "title": "Window Start Sec",
+      "type": "number"
+    },
+    "window_end_sec": {
+      "title": "Window End Sec",
+      "type": "number"
+    },
+    "sentiment_during_sponsor": {
+      "title": "Sentiment During Sponsor",
+      "type": "number"
+    },
+    "stream_baseline_sentiment": {
+      "title": "Stream Baseline Sentiment",
+      "type": "number"
+    },
+    "sentiment_delta": {
+      "title": "Sentiment Delta",
+      "type": "number"
+    },
+    "backlash_index": {
+      "title": "Backlash Index",
+      "type": "number"
+    },
+    "brand_attention_score": {
+      "title": "Brand Attention Score",
+      "type": "number"
+    },
+    "summary": {
+      "title": "Summary",
+      "type": "string"
+    }
+  },
+  "required": [
+    "brand_id",
+    "brand_name",
+    "sponsor_segment",
+    "chat_mention_count",
+    "mention_velocity",
+    "window_start_sec",
+    "window_end_sec",
+    "sentiment_during_sponsor",
+    "stream_baseline_sentiment",
+    "sentiment_delta",
+    "backlash_index",
+    "brand_attention_score",
+    "summary"
+  ],
+  "title": "SponsorImpactReport",
+  "type": "object"
+}

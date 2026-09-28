@@ -1,0 +1,33 @@
+{
+  "properties": {
+    "message_id": {
+      "title": "Message Id",
+      "type": "string"
+    },
+    "user_id": {
+      "title": "User Id",
+      "type": "string"
+    },
+    "verdict": {
+      "title": "Verdict",
+      "type": "string"
+    },
+    "confidence": {
+      "title": "Confidence",
+      "type": "number"
+    },
+    "reason": {
+      "title": "Reason",
+      "type": "string"
+    }
+  },
+  "required": [
+    "message_id",
+    "user_id",
+    "verdict",
+    "confidence",
+    "reason"
+  ],
+  "title": "ChatterSafetyVerdict",
+  "type": "object"
+}

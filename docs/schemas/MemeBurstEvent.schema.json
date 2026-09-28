@@ -1,0 +1,64 @@
+{
+  "properties": {
+    "meme_id": {
+      "title": "Meme Id",
+      "type": "string"
+    },
+    "representative_text": {
+      "title": "Representative Text",
+      "type": "string"
+    },
+    "origin_message_id": {
+      "title": "Origin Message Id",
+      "type": "string"
+    },
+    "origin_user_id": {
+      "title": "Origin User Id",
+      "type": "string"
+    },
+    "origin_author_name": {
+      "title": "Origin Author Name",
+      "type": "string"
+    },
+    "burst_start_sec": {
+      "title": "Burst Start Sec",
+      "type": "number"
+    },
+    "burst_peak_sec": {
+      "title": "Burst Peak Sec",
+      "type": "number"
+    },
+    "burst_end_sec": {
+      "title": "Burst End Sec",
+      "type": "number"
+    },
+    "propagation_velocity": {
+      "description": "Messages per second during burst",
+      "title": "Propagation Velocity",
+      "type": "number"
+    },
+    "unique_spreaders": {
+      "title": "Unique Spreaders",
+      "type": "integer"
+    },
+    "total_occurrences": {
+      "title": "Total Occurrences",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "meme_id",
+    "representative_text",
+    "origin_message_id",
+    "origin_user_id",
+    "origin_author_name",
+    "burst_start_sec",
+    "burst_peak_sec",
+    "burst_end_sec",
+    "propagation_velocity",
+    "unique_spreaders",
+    "total_occurrences"
+  ],
+  "title": "MemeBurstEvent",
+  "type": "object"
+}

@@ -1,0 +1,85 @@
+{
+  "$defs": {
+    "BoundingBox": {
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "confidence": {
+          "title": "Confidence",
+          "type": "number"
+        },
+        "box": {
+          "description": "[ymin, xmin, ymax, xmax] normalized",
+          "items": {
+            "type": "number"
+          },
+          "title": "Box",
+          "type": "array"
+        }
+      },
+      "required": [
+        "label",
+        "confidence",
+        "box"
+      ],
+      "title": "BoundingBox",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "frame_index": {
+      "title": "Frame Index",
+      "type": "integer"
+    },
+    "timestamp_sec": {
+      "title": "Timestamp Sec",
+      "type": "number"
+    },
+    "scene_type": {
+      "default": "UNKNOWN",
+      "description": "'GAMEPLAY', 'REACT_VIDEO', 'FULLSCREEN_CAM', 'BROWSER', 'UNKNOWN'",
+      "title": "Scene Type",
+      "type": "string"
+    },
+    "screen_summary": {
+      "default": "",
+      "description": "Dense caption of the on-screen event",
+      "title": "Screen Summary",
+      "type": "string"
+    },
+    "ocr_text_blocks": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Ocr Text Blocks",
+      "type": "array"
+    },
+    "streamer_facial_expression": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Streamer Facial Expression"
+    },
+    "detected_objects": {
+      "items": {
+        "$ref": "#/$defs/BoundingBox"
+      },
+      "title": "Detected Objects",
+      "type": "array"
+    }
+  },
+  "required": [
+    "frame_index",
+    "timestamp_sec"
+  ],
+  "title": "VisualKeyframe",
+  "type": "object"
+}
