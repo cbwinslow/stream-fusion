@@ -29,8 +29,13 @@ Refer to [`docs/spec/25_TARGETED_STREAMER_ROSTER_AND_HOMELAB_HARVESTER.md`](file
    - `HarvestStatus`: `DISCOVERED`, `QUEUED`, `DOWNLOADING`, `HARVESTED`, `READY_FOR_ANALYSIS`, `ANALYZED`, `ERROR`.
    - `RosterLoader`: Parse from YAML, JSON, CSV, or SQLite.
 2. **Catalog Database (`src/stream_fusion/harvester/catalog.py`)**:
-   - SQLite manager for `catalog.db` with thread-safe queries, migration table creation, and state updates.
-3. **Crawler & Discovery (`src/stream_fusion/harvester/crawler.py`)**:
+   - Dual-backend catalog store supporting **PostgreSQL** (`postgresql://...` on Homelab for high-throughput concurrency, `pg_trgm` NLP search) and **SQLite** (`sqlite:///...` for local development/testing).
+   - Thread-safe query execution, migration table creation, and state updates.
+3. **Synergy Integrations**:
+   - Pre-seeds known streamer voiceprints into `VoiceprintLibrary` (Spec 11).
+   - Integrates with `ChatterProfileStore` (Spec 12) and `AdaptiveSlangEngine` (Spec 17) for cross-stream NLP.
+   - Audits stream sponsors against `BrandProfile` catalog (Spec 09).
+4. **Crawler & Discovery (`src/stream_fusion/harvester/crawler.py`)**:
    - Platform VOD discovery (Twitch, YouTube, Kick) via `yt-dlp` metadata extraction (`yt-dlp --flat-playlist -J`).
    - Deduplication against existing catalog entries.
 4. **Harvester Engine (`src/stream_fusion/harvester/engine.py`)**:

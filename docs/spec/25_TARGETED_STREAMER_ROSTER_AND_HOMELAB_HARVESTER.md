@@ -4,17 +4,24 @@
 
 StreamFusion's analytical engine (Specs 01–24) provides industry-grade multi-modal intelligence: speech transcription, voiceprint matching, Florence-2 visual comprehension, adaptive slang tracking, knowledge graph extraction, claim grounding, sponsor auditing, and autonomous 9:16 vertical short production.
 
-To feed this analytical engine continuously at scale, we require a **Targeted Streamer Roster Ingestion & Homelab Harvester Subsystem**. This system:
-1. Accepts a configurable **Roster** of target streamers (names, URLs, platforms, quality preferences, download priorities).
-2. Spawns managed **Worker Pools** that crawl channel endpoints, detect new/unprocessed VODs, and download both high-resolution video and timestamped chat replays.
-3. Stages raw assets cleanly onto the **Homelab Server (NAS/Storage Pool)** with structured directory layouts, integrity checksums, and ingest descriptors.
-4. Manages an internal **VOD Catalog (`catalog.db`)** tracking lifecycle states (`DISCOVERED`, `QUEUED`, `DOWNLOADING`, `HARVESTED`, `READY_FOR_ANALYSIS`, `ANALYZED`, `ERROR`).
-5. Provides a frictionless bridge to trigger `FullSpectrumPipeline` on any harvested VOD on-demand or automatically.
+To feed this analytical engine continuously at scale across hours of daily broadcasts from multiple creators, we require a **Targeted Streamer Roster Ingestion & Homelab Harvester Subsystem**. This system:
+1. Accepts a configurable **Roster** of target streamers (names, URLs, platforms, quality preferences, download priorities, pre-seeded voiceprints) via YAML, JSON, CSV, or relational database records.
+2. Supports a **Dual-Mode Database Architecture**:
+   - **PostgreSQL (Homelab Production)**: Robust concurrent transactions, row-level locking, table partitioning, `pg_trgm` full-text search for NLP, and `pgvector` compatibility for high-volume multi-streamer operations.
+   - **SQLite (Local / Development / Test)**: Zero-configuration embedded fallback (`sqlite:///catalog.db`) ensuring all unit and integration tests run self-contained and fast.
+3. Spawns managed **Worker Pools** that crawl channel endpoints, detect new/unprocessed VODs, and download both high-resolution video and timestamped chat replays.
+4. Stages raw assets cleanly onto the **Homelab Server (NAS/Storage Pool)** with structured directory layouts, integrity checksums, and ingest descriptors.
+5. Manages an internal **VOD Catalog (`catalog` table)** tracking lifecycle states (`DISCOVERED`, `QUEUED`, `DOWNLOADING`, `HARVESTED`, `READY_FOR_ANALYSIS`, `ANALYZED`, `ERROR`).
+6. Bridges seamlessly into all existing StreamFusion subsystems:
+   - Links target streamers with known **Voiceprint Profiles** (Spec 11) for immediate diarization recognition.
+   - Feeds harvested chat into **Chatter Profiles** (Spec 12) and **Adaptive Slang Discovery** (Spec 17).
+   - Audits stream sponsors against **Brand Profiles** (Spec 09).
+   - Provides a one-command handoff to execute the unified **9-Phase FullSpectrumPipeline** (Spec 24).
 
 ```
 +-----------------------------------------------------------------------------------------+
 |                                Streamer Target Roster                                   |
-| (YAML / JSON / CSV / SQLite): Streamer Names, Channel URLs, Priority, Quality Presets    |
+| (PostgreSQL / SQLite / YAML / CSV): Streamer Names, URLs, Priority, Quality, Voiceprints|
 +-----------------------------------------------------------------------------------------+
                                              │
                                              ▼
@@ -28,14 +35,24 @@ To feed this analytical engine continuously at scale, we require a **Targeted St
                                              │
                                              ▼
 +-----------------------------------------------------------------------------------------+
-|                         Homelab Server Storage Architecture                             |
-| \\homelab\storage\vods\<streamer_id>\<vod_date>_<vod_id>\                                |
-|  ├── media.mp4                # Video stream (or audio-only preset)                     |
-|  ├── chat.json                # Replay chat messages with offsets                       |
-|  ├── metadata.json            # Streamer, title, views, game category                   |
-|  ├── thumbnail.jpg            # Original stream thumbnail                               |
-|  ├── checksums.sha256         # Integrity verification                                  |
-|  └── ingest_manifest.json     # StreamFusion Ingest Descriptor                          |
+|                     Homelab Storage & Central Database Layer                            |
+|                                                                                         |
+|  [Relational & NLP DB: PostgreSQL (or SQLite local)]                                    |
+|   • streamer_targets (Roster, platform channels, priority)                              |
+|   • harvested_vods (Catalog lifecycle state machine)                                    |
+|   • chatters & chatter_messages (Spec 12 historical chatter safety store)               |
+|   • adaptive_lexicon (Spec 17 community slang terms & z-scores)                         |
+|                                                                                         |
+|  [Storage Volume: \\homelab\storage\vods\<streamer_id>\<vod_date>_<vod_id>\]            |
+|   ├── media.mp4                # Video stream (or audio-only preset)                    |
+|   ├── chat.json                # Replay chat messages with offsets                      |
+|   ├── metadata.json            # Streamer, title, views, game category                  |
+|   ├── thumbnail.jpg            # Original stream thumbnail                              |
+|   ├── checksums.sha256         # Integrity verification                                 |
+|   └── ingest_manifest.json     # StreamFusion Ingest Descriptor                         |
+|                                                                                         |
+|  [Analytical Data Lake: Parquet]                                                        |
+|   └── <stream_id>_matrix.parquet # Compressed 2s dense multimodal time-series          |
 +-----------------------------------------------------------------------------------------+
                                              │
                                              ▼
@@ -104,23 +121,62 @@ Responsible for multi-threaded, resilient retrieval:
 - **Chat Replay Ingestion**:
   - Uses `chat-downloader` or platform VOD chat APIs to produce standardized `ChatMessage` lists.
 
-### 2.4 VOD Catalog Database (`catalog.db`)
-Maintains comprehensive tracking across all harvested items:
-- **`streamer_targets`**: Roster records.
-- **`harvested_vods`**:
-  - `vod_id` (PK)
-  - `streamer_id`
-  - `platform`
-  - `title`
-  - `published_at`
-  - `duration_sec`
-  - `status` (`DISCOVERED`, `QUEUED`, `DOWNLOADING`, `HARVESTED`, `INGESTED`, `ERROR`)
-  - `video_path`
-  - `chat_path`
-  - `file_size_bytes`
-  - `error_message`
-  - `download_speed_mbps`
-  - `harvested_at`
+### 2.4 Dual-Backend Catalog Database (`database_url`: PostgreSQL or SQLite)
+The catalog subsystem manages state persistence and high-volume NLP querying via an abstracted database adapter supporting:
+- **Local / CI Testing**: `sqlite:///catalog.db` (zero setup, isolated test runs).
+- **Homelab Production**: `postgresql://streamuser:password@homelab:5432/streamfusion` (row-level locking, concurrent workers, massive scale).
+
+#### Database Schema DDL:
+
+```sql
+-- Streamer Targets (Roster)
+CREATE TABLE IF NOT EXISTS streamer_targets (
+    streamer_id TEXT PRIMARY KEY,
+    display_name TEXT NOT NULL,
+    channel_urls TEXT NOT NULL,           -- JSON array of URLs
+    primary_platform TEXT NOT NULL,       -- TWITCH, YOUTUBE, KICK
+    quality_preset TEXT DEFAULT 'best',
+    include_chat BOOLEAN DEFAULT TRUE,
+    max_recent_vods INTEGER DEFAULT 5,
+    lookback_days INTEGER DEFAULT 14,
+    download_priority INTEGER DEFAULT 5,
+    destination_override TEXT,
+    tags TEXT,                           -- JSON array of tags
+    enabled BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    last_synced_at TIMESTAMP WITH TIME ZONE
+);
+
+-- Harvested VOD Catalog
+CREATE TABLE IF NOT EXISTS harvested_vods (
+    vod_id TEXT PRIMARY KEY,
+    streamer_id TEXT NOT NULL REFERENCES streamer_targets(streamer_id),
+    platform TEXT NOT NULL,
+    title TEXT NOT NULL,
+    published_at TIMESTAMP WITH TIME ZONE,
+    duration_sec REAL DEFAULT 0.0,
+    status TEXT NOT NULL DEFAULT 'DISCOVERED', -- DISCOVERED, QUEUED, DOWNLOADING, HARVESTED, INGESTED, ERROR
+    video_path TEXT,
+    chat_path TEXT,
+    metadata_path TEXT,
+    file_size_bytes BIGINT DEFAULT 0,
+    download_speed_mbps REAL DEFAULT 0.0,
+    retry_count INTEGER DEFAULT 0,
+    error_message TEXT,
+    harvested_at TIMESTAMP WITH TIME ZONE,
+    analyzed_at TIMESTAMP WITH TIME ZONE
+);
+
+-- High-Performance Indices
+CREATE INDEX IF NOT EXISTS idx_harvested_vods_status ON harvested_vods(status);
+CREATE INDEX IF NOT EXISTS idx_harvested_vods_streamer ON harvested_vods(streamer_id, published_at DESC);
+```
+
+#### NLP & Scalability Features:
+1. **Chatter Store Integration (Spec 12)**: The historical `chatters` and `chatter_messages` tables run in the same PostgreSQL database, allowing cross-stream chatter analytics across all target streamers.
+2. **Trigram Fuzzy Search (`pg_trgm`)**: In PostgreSQL, `CREATE EXTENSION IF NOT EXISTS pg_trgm;` provides sub-millisecond similarity queries across millions of chat messages for misspelled slang, brand mentions, and memes.
+3. **Parquet Integration**: Raw dense fusion matrices remain stored in `.parquet` on the filesystem/NAS, with `harvested_vods.metadata_path` pointing directly to the dataset files.
+
 
 ### 2.5 Bridge to `FullSpectrumPipeline`
 Once a VOD is harvested on the homelab, it can be passed to the analytical pipeline with zero copying:
