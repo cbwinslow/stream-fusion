@@ -777,6 +777,10 @@ class FullSpectrumConfig(BaseModel):
     bounded_buffer: bool = True
     window_size_sec: float = 30.0
     sample_interval_sec: float = 2.0
+    sampling_mode: str = "fixed"  # "fixed" | "adaptive"
+    min_interval_sec: float = 0.5
+    max_interval_sec: float = 5.0
+    burst_window_sec: float = 12.0
     enable_adaptive_slang: bool = True
     enable_web_grounding: bool = True
     enable_stance_tracking: bool = True
@@ -1135,15 +1139,19 @@ class VectorIndexStats(BaseModel):
     index_storage_bytes: int = 0
 
 
-
-
-
-
-
-
-
-
-
-
+class ProductionBenchmarkReport(BaseModel):
+    """Telemetry report assessing performance and compute savings of adaptive sampling (Spec 30)."""
+    stream_id: str
+    duration_sec: float
+    total_potential_frames: int
+    fixed_sampling_frames: int
+    actual_analyzed_frames: int
+    sampling_mode: str = "adaptive"
+    frames_saved: int = 0
+    reduction_pct: float = 0.0
+    estimated_gpu_time_saved_sec: float = 0.0
+    burst_zone_coverage_pct: float = 100.0
+    peak_ram_mb: float = 0.0
+    peak_vram_mb: float = 0.0
 
 

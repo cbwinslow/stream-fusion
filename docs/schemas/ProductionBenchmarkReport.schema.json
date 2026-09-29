@@ -1,0 +1,69 @@
+{
+  "description": "Telemetry report assessing performance and compute savings of adaptive sampling (Spec 30).",
+  "properties": {
+    "stream_id": {
+      "title": "Stream Id",
+      "type": "string"
+    },
+    "duration_sec": {
+      "title": "Duration Sec",
+      "type": "number"
+    },
+    "total_potential_frames": {
+      "title": "Total Potential Frames",
+      "type": "integer"
+    },
+    "fixed_sampling_frames": {
+      "title": "Fixed Sampling Frames",
+      "type": "integer"
+    },
+    "actual_analyzed_frames": {
+      "title": "Actual Analyzed Frames",
+      "type": "integer"
+    },
+    "sampling_mode": {
+      "default": "adaptive",
+      "title": "Sampling Mode",
+      "type": "string"
+    },
+    "frames_saved": {
+      "default": 0,
+      "title": "Frames Saved",
+      "type": "integer"
+    },
+    "reduction_pct": {
+      "default": 0.0,
+      "title": "Reduction Pct",
+      "type": "number"
+    },
+    "estimated_gpu_time_saved_sec": {
+      "default": 0.0,
+      "title": "Estimated Gpu Time Saved Sec",
+      "type": "number"
+    },
+    "burst_zone_coverage_pct": {
+      "default": 100.0,
+      "title": "Burst Zone Coverage Pct",
+      "type": "number"
+    },
+    "peak_ram_mb": {
+      "default": 0.0,
+      "title": "Peak Ram Mb",
+      "type": "number"
+    },
+    "peak_vram_mb": {
+      "default": 0.0,
+      "title": "Peak Vram Mb",
+      "type": "number"
+    }
+  },
+  "required": [
+    "stream_id",
+    "duration_sec",
+    "total_potential_frames",
+    "fixed_sampling_frames",
+    "actual_analyzed_frames"
+  ],
+  "title": "ProductionBenchmarkReport",
+  "type": "object"
+}

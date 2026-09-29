@@ -37,6 +37,7 @@ class BoundedFrameBuffer:
             Callable[[List[Dict[str, Any]], float, float], List[VisualKeyframe]]
         ] = None,
         purge_on_complete: bool = True,
+        optimal_timestamps: Optional[List[float]] = None,
     ) -> List[VisualKeyframe]:
         """Extracts and processes frames in sliding windows, unlinking images per window."""
         if not video_path.exists():
@@ -56,30 +57,52 @@ class BoundedFrameBuffer:
             window_dir.mkdir(parents=True, exist_ok=True)
 
             try:
-                # 1. Demux only frames within current window
-                extracted_frames = self.demuxer.extract_frames_at_interval(
-                    video_path,
-                    output_dir=window_dir,
-                    interval_sec=sample_interval_sec,
-                    start_time_sec=current_time,
-                    duration_sec=duration,
-                )
-
-                # 2. Build metadata items
                 frame_items = []
-                for idx, f_path in enumerate(extracted_frames):
-                    t_frame = round(current_time + (idx * sample_interval_sec), 3)
-                    frame_items.append(
-                        {
-                            "path": str(f_path),
-                            "timestamp_sec": t_frame,
-                            "frame_index": global_frame_idx,
-                        }
+
+                if optimal_timestamps is not None:
+                    # Adaptive timestamps mode
+                    w_ts = [
+                        t for t in optimal_timestamps
+                        if current_time <= t < window_end
+                    ]
+                    extracted_pairs = self.demuxer.extract_frames_at_timestamps(
+                        video_path,
+                        output_dir=window_dir,
+                        timestamps=w_ts,
                     )
-                    global_frame_idx += 1
+                    for t_frame, f_path in extracted_pairs:
+                        frame_items.append(
+                            {
+                                "path": str(f_path),
+                                "timestamp_sec": t_frame,
+                                "frame_index": global_frame_idx,
+                            }
+                        )
+                        global_frame_idx += 1
+                else:
+                    # 1. Demux only frames within current window using fixed interval
+                    extracted_frames = self.demuxer.extract_frames_at_interval(
+                        video_path,
+                        output_dir=window_dir,
+                        interval_sec=sample_interval_sec,
+                        start_time_sec=current_time,
+                        duration_sec=duration,
+                    )
+
+                    # 2. Build metadata items
+                    for idx, f_path in enumerate(extracted_frames):
+                        t_frame = round(current_time + (idx * sample_interval_sec), 3)
+                        frame_items.append(
+                            {
+                                "path": str(f_path),
+                                "timestamp_sec": t_frame,
+                                "frame_index": global_frame_idx,
+                            }
+                        )
+                        global_frame_idx += 1
 
                 # 3. Process frames via callback (e.g. isolated worker or local processor)
-                if frame_processor:
+                if frame_processor and frame_items:
                     window_kfs = frame_processor(frame_items, current_time, window_end)
                     all_keyframes.extend(window_kfs)
 

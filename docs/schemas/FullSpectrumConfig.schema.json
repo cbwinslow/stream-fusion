@@ -20,6 +20,26 @@
       "title": "Sample Interval Sec",
       "type": "number"
     },
+    "sampling_mode": {
+      "default": "fixed",
+      "title": "Sampling Mode",
+      "type": "string"
+    },
+    "min_interval_sec": {
+      "default": 0.5,
+      "title": "Min Interval Sec",
+      "type": "number"
+    },
+    "max_interval_sec": {
+      "default": 5.0,
+      "title": "Max Interval Sec",
+      "type": "number"
+    },
+    "burst_window_sec": {
+      "default": 12.0,
+      "title": "Burst Window Sec",
+      "type": "number"
+    },
     "enable_adaptive_slang": {
       "default": true,
       "title": "Enable Adaptive Slang",

@@ -13,6 +13,8 @@ from stream_fusion.monitoring.audit import (
     StageTelemetry,
 )
 
+from stream_fusion.monitoring.profiler import ProductionRunProfiler
+
 __all__ = [
     "StageTimer",
     "SystemResourceProbe",
@@ -22,4 +24,5 @@ __all__ = [
     "RegressionAlert",
     "RegressionComparator",
     "StageTelemetry",
+    "ProductionRunProfiler",
 ]

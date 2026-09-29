@@ -20,6 +20,14 @@ class VisionConfig(BaseModel):
     ocr_enabled: bool = True
     object_detection_enabled: bool = True
 
+    # Adaptive Density Optimizer (Spec 30)
+    sampling_mode: str = "fixed"  # "fixed" | "adaptive"
+    min_interval_sec: float = 0.5  # High-density burst interval (2 FPS)
+    max_interval_sec: float = 5.0  # Low-density idle interval (0.2 FPS)
+    burst_window_sec: float = 12.0  # Duration to maintain dense sampling after trigger
+    chat_burst_zscore_threshold: float = 2.5
+    scene_change_threshold: float = 0.35
+
 
 class ChatConfig(BaseModel):
     latency_offset_sec: float = Field(

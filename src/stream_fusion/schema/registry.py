@@ -102,6 +102,7 @@ class SchemaRegistry:
             "IndexVodRequest",
             "IndexVodResponse",
             "VectorIndexStats",
+            "ProductionBenchmarkReport",
         ]:
 
             if hasattr(model_schemas, name):

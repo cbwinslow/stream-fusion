@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 
 def find_ffmpeg_binary() -> str:
@@ -112,3 +112,34 @@ class MediaDemuxer:
 
         frames = sorted(output_dir.glob("frame_*.jpg"))
         return frames
+
+    def extract_frames_at_timestamps(
+        self,
+        video_path: Path,
+        output_dir: Path,
+        timestamps: List[float],
+    ) -> List[Tuple[float, Path]]:
+        """Extracts non-uniform frames at specific timestamps using precise seek demuxing."""
+        output_dir.mkdir(parents=True, exist_ok=True)
+        results: List[Tuple[float, Path]] = []
+        if not timestamps:
+            return results
+
+        sorted_ts = sorted(list(set(round(t, 3) for t in timestamps if t >= 0)))
+
+        for idx, ts in enumerate(sorted_ts):
+            out_file = output_dir / f"frame_{idx:05d}_{ts:.3f}s.jpg"
+            cmd = [
+                self.ffmpeg_bin,
+                "-y",
+                "-ss", str(ts),
+                "-i", str(video_path),
+                "-frames:v", "1",
+                "-q:v", "2",
+                str(out_file),
+            ]
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            if res.returncode == 0 and out_file.exists() and out_file.stat().st_size > 0:
+                results.append((ts, out_file))
+
+        return results
