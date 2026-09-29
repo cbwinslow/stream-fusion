@@ -150,4 +150,28 @@ def test_cli_audit_benchmark_missing_video():
     assert "not found" in res.output
 
 
+def test_config_centralization_and_homelab(tmp_path: Path, monkeypatch):
+    from stream_fusion.config import StreamFusionConfig, load_config, save_config
+
+    cfg = StreamFusionConfig()
+    assert cfg.homelab.host == "cbwdellr720"
+    assert cfg.homelab.port == 5432
+    assert "cbwdellr720" in cfg.homelab.storage_root
+
+    # Test saving and loading from YAML
+    yaml_file = tmp_path / "streamfusion.yaml"
+    cfg.homelab.host = "10.147.17.5"
+    save_config(cfg, yaml_file)
+    assert yaml_file.exists()
+
+    loaded = load_config(yaml_file)
+    assert loaded.homelab.host == "10.147.17.5"
+
+    # Test environment variable override
+    monkeypatch.setenv("STREAMFUSION_HOMELAB_HOST", "custom-homelab-host")
+    override_cfg = load_config(yaml_file)
+    assert override_cfg.homelab.host == "custom-homelab-host"
+
+
+
 
