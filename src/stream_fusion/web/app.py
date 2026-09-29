@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 import logging
 from pathlib import Path
 from typing import Any, Dict, Optional
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -21,6 +21,7 @@ from stream_fusion.web.routes.live import router as live_router
 from stream_fusion.web.routes.player import router as player_router
 from stream_fusion.web.routes.roster import router as roster_router
 from stream_fusion.web.routes.rpc import router as rpc_router
+from stream_fusion.web.routes.search import router as search_router
 from stream_fusion.web.routes.shorts import router as shorts_router
 from stream_fusion.web.routes.system import router as system_router
 from stream_fusion.web.websockets import WebSocketHub
@@ -33,6 +34,7 @@ def create_app(
     catalog: Optional[HarvestCatalog] = None,
     daemon: Optional[HomelabDaemon] = None,
     broadcaster: Optional[LiveEventBroadcaster] = None,
+    search_engine: Optional[Any] = None,
 ) -> FastAPI:
     """Builds and configures the StreamFusion Web Dashboard & Studio FastAPI application."""
     config = config or DashboardConfig()
@@ -68,6 +70,7 @@ def create_app(
     app.state.broadcaster = broadcaster or LiveEventBroadcaster()
     app.state.ws_hub = WebSocketHub(app.state.broadcaster)
     app.state.rpc_dispatcher = AgentRpcDispatcher()
+    app.state.search_engine = search_engine
     app.state.active_live_streams = {}
     if daemon:
         app.state.rpc_dispatcher._active_daemon = daemon
@@ -90,8 +93,28 @@ def create_app(
     app.include_router(player_router)
     app.include_router(shorts_router)
     app.include_router(knowledge_router)
+    app.include_router(search_router)
     app.include_router(live_router)
     app.include_router(rpc_router)
+
+    # Direct media deep-link streaming route
+    @app.get("/api/media/{vod_id}/video")
+    def stream_direct_media_video(vod_id: str, request: Request):
+        """Direct media endpoint supporting deep-linked video timestamps."""
+        catalog = getattr(app.state, "catalog", None)
+        if catalog:
+            vod = catalog.get_harvested_vod(vod_id)
+            if vod and vod.video_path and Path(vod.video_path).exists():
+                return FileResponse(
+                    path=vod.video_path,
+                    media_type="video/mp4",
+                    filename=Path(vod.video_path).name,
+                )
+        homelab_root = getattr(app.state, "homelab_root", "./homelab_storage")
+        cand = Path(homelab_root) / "raw" / f"{vod_id}.mp4"
+        if cand.exists():
+            return FileResponse(path=str(cand), media_type="video/mp4", filename=cand.name)
+        raise HTTPException(status_code=404, detail=f"Video for VOD '{vod_id}' not found.")
 
     # WebSocket Endpoints
     @app.websocket("/ws/live")

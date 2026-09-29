@@ -1,0 +1,40 @@
+{
+  "properties": {
+    "total_chunks": {
+      "title": "Total Chunks",
+      "type": "integer"
+    },
+    "total_vods": {
+      "title": "Total Vods",
+      "type": "integer"
+    },
+    "total_streamers": {
+      "title": "Total Streamers",
+      "type": "integer"
+    },
+    "chunks_by_type": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Chunks By Type",
+      "type": "object"
+    },
+    "embedding_dim": {
+      "default": 128,
+      "title": "Embedding Dim",
+      "type": "integer"
+    },
+    "index_storage_bytes": {
+      "default": 0,
+      "title": "Index Storage Bytes",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "total_chunks",
+    "total_vods",
+    "total_streamers"
+  ],
+  "title": "VectorIndexStats",
+  "type": "object"
+}

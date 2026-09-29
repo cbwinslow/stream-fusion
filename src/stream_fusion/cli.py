@@ -2250,9 +2250,113 @@ def dashboard_open(
     """Opens the StreamFusion Studio in the default web browser."""
     import webbrowser
 
-    target_url = f"http://localhost:{port}"
-    console.print(f"[bold purple]Opening StreamFusion Studio in browser:[/bold purple] {target_url}")
-    webbrowser.open(target_url)
+# ---------------------------------------------------------------------------
+# Spec 28: Semantic Vector Search & Multimodal RAG CLI
+# ---------------------------------------------------------------------------
+
+search_app = typer.Typer(help="Semantic Vector Search & Multimodal RAG Engine (Spec 28)")
+app.add_typer(search_app, name="search")
+
+
+@search_app.command(name="query")
+def search_query_cmd(
+    query: str = typer.Argument(..., help="Search query text"),
+    top_k: int = typer.Option(5, "--top-k", "-k", help="Maximum results to return"),
+    streamer: Optional[str] = typer.Option(None, "--streamer", "-s", help="Filter by streamer ID"),
+    hybrid_weight: float = typer.Option(0.5, "--hybrid-weight", "-w", help="Weight for dense vs sparse (0.0 to 1.0)"),
+    homelab_root: Path = typer.Option(Path("./homelab_storage"), "--homelab-root", "-r", help="Homelab storage root"),
+):
+    """Executes dense + sparse hybrid vector search across indexed stream moments."""
+    from stream_fusion.knowledge.search import HybridSearchEngine
+    from stream_fusion.models.schemas import SearchQueryRequest
+    from rich.table import Table
+
+    engine = HybridSearchEngine(homelab_root=homelab_root)
+    req = SearchQueryRequest(
+        query=query,
+        top_k=top_k,
+        streamer_ids=[streamer] if streamer else None,
+        hybrid_weight=hybrid_weight,
+    )
+    res = engine.search(req)
+
+    console.print(f"[bold cyan]Search Query:[/bold cyan] '{res.query}' ({res.total_results} matches in {res.execution_time_ms} ms)")
+    if not res.results:
+        console.print("[yellow]No matching moments found.[/yellow]")
+        return
+
+    table = Table(title="Retrieved Multimodal Evidence", show_header=True, header_style="bold magenta")
+    table.add_column("Streamer", style="cyan", width=12)
+    table.add_column("Time", style="green", width=10)
+    table.add_column("Type", style="yellow", width=10)
+    table.add_column("Score", style="bold white", width=8)
+    table.add_column("Text Excerpt", style="white")
+
+    for r in res.results:
+        table.add_row(
+            r.streamer_id,
+            r.timestamp_formatted,
+            r.content_type.upper(),
+            f"{r.combined_score:.3f}",
+            r.text[:80] + ("..." if len(r.text) > 80 else ""),
+        )
+
+    console.print(table)
+
+
+@search_app.command(name="rag")
+def search_rag_cmd(
+    query: str = typer.Argument(..., help="Cross-stream question or conversational prompt"),
+    top_k: int = typer.Option(6, "--top-k", "-k", help="Maximum evidence chunks to retrieve"),
+    streamer: Optional[str] = typer.Option(None, "--streamer", "-s", help="Filter by streamer ID"),
+    homelab_root: Path = typer.Option(Path("./homelab_storage"), "--homelab-root", "-r", help="Homelab storage root"),
+):
+    """Performs conversational cross-stream RAG synthesis with exact timestamp citations."""
+    from stream_fusion.knowledge.search import HybridSearchEngine, MultimodalRagSynthesizer
+    from stream_fusion.models.schemas import RagSynthesisRequest
+    from rich.panel import Panel
+
+    engine = HybridSearchEngine(homelab_root=homelab_root)
+    synthesizer = MultimodalRagSynthesizer(engine)
+    req = RagSynthesisRequest(
+        query=query,
+        top_k=top_k,
+        streamer_ids=[streamer] if streamer else None,
+    )
+    res = synthesizer.synthesize(req)
+
+    console.print(Panel(res.answer, title=f"[bold purple]RAG Synthesis: {query}[/bold purple]", subtitle=f"{res.execution_time_ms} ms"))
+    if res.citations:
+        console.print("[bold yellow]Verified Media Citations:[/bold yellow]")
+        for c in res.citations:
+            console.print(f"  • [cyan]{c.streamer_id.capitalize()}[/cyan] @ [green]{c.video_url}[/green]: \"{c.quote}\"")
+
+
+@search_app.command(name="stats")
+def search_stats_cmd(
+    homelab_root: Path = typer.Option(Path("./homelab_storage"), "--homelab-root", "-r", help="Homelab storage root"),
+):
+    """Displays vector database and BM25 index statistics."""
+    from stream_fusion.knowledge.search import HybridSearchEngine
+    from rich.table import Table
+
+    engine = HybridSearchEngine(homelab_root=homelab_root)
+    stats = engine.storage.get_stats()
+
+    table = Table(title="Spec 28 Vector Index Statistics", show_header=True)
+    table.add_column("Metric", style="cyan")
+    table.add_column("Value", style="bold green")
+
+    table.add_row("Total Indexed Chunks", str(stats.total_chunks))
+    table.add_row("Total VOD Archives", str(stats.total_vods))
+    table.add_row("Tracked Streamers", str(stats.total_streamers))
+    table.add_row("Embedding Dimension", str(stats.embedding_dim))
+    table.add_row("Storage File Bytes", f"{stats.index_storage_bytes:,} B")
+
+    for c_type, count in stats.chunks_by_type.items():
+        table.add_row(f"  - {c_type.capitalize()} Chunks", str(count))
+
+    console.print(table)
 
 
 if __name__ == "__main__":

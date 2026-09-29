@@ -1,0 +1,33 @@
+{
+  "properties": {
+    "vod_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Vod Id"
+    },
+    "reindex": {
+      "default": false,
+      "title": "Reindex",
+      "type": "boolean"
+    },
+    "chunk_size_sec": {
+      "default": 15.0,
+      "title": "Chunk Size Sec",
+      "type": "number"
+    },
+    "overlap_sec": {
+      "default": 3.0,
+      "title": "Overlap Sec",
+      "type": "number"
+    }
+  },
+  "title": "IndexVodRequest",
+  "type": "object"
+}

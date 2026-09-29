@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: streamfusion-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: streamfusion
+      POSTGRES_USER: streamfusion
+      POSTGRES_PASSWORD: streamfusion_secure_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: streamfusion-clickhouse
+    restart: unless-stopped
+    ports:
+      - "8123:8123"  # HTTP interface
+      - "9000:9000"  # Native interface
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: streamfusion-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"  # REST API
+      - "6334:6334"  # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  streamfusion-server:
+    build: .
+    container_name: streamfusion-server
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - clickhouse
+      - qdrant
+    environment:
+      - POSTGRES_URL=postgresql://streamfusion:streamfusion_secure_password@postgres:5432/streamfusion
+      - CLICKHOUSE_URL=http://clickhouse:8123
+      - QDRANT_URL=http://qdrant:6333
+      - HOMELAB_STORAGE_PATH=/data
+    ports:
+      - "8000:8000"
+    volumes:
+      - nas_media:/data
+
+volumes:
+  postgres_data:
+  clickhouse_data:
+  qdrant_data:
+  nas_media:

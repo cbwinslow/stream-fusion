@@ -7,8 +7,10 @@
         "DOWNLOADING",
         "HARVESTED",
         "READY_FOR_ANALYSIS",
+        "ANALYZING",
         "ANALYZED",
-        "ERROR"
+        "ERROR",
+        "FAILED"
       ],
       "title": "HarvestStatus",
       "type": "string"

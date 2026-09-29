@@ -953,11 +953,29 @@ class DashboardConfig(BaseModel):
     reload: bool = Field(default=False, description="Enable auto-reload for development")
     homelab_root: str = Field(default="./homelab_storage", description="Root storage directory for VODs and artifacts")
     catalog_db_url: str = Field(default="sqlite:///homelab_storage/catalog.db", description="Catalog database URL")
+    vector_db_url: Optional[str] = Field(default=None, description="Vector database URL: postgresql://... for production pgvector, json://... for flat JSON, or sqlite://...")
     enable_cors: bool = Field(default=True, description="Enable Cross-Origin Resource Sharing")
     cors_origins: List[str] = Field(default_factory=lambda: ["*"], description="Allowed CORS origin list")
     static_dir: Optional[str] = Field(default=None, description="Custom path to static frontend assets")
     enable_auth: bool = Field(default=False, description="Enable basic API key header authentication")
     api_key: Optional[str] = Field(default=None, description="API key when authentication is enabled")
+    # Spec 29 Polyglot Stack Endpoints
+    postgres_url: Optional[str] = Field(
+        default=None,
+        description="PostgreSQL 17 connection string (e.g. postgresql://user:pass@192.168.1.100:5432/streamfusion)",
+    )
+    clickhouse_url: Optional[str] = Field(
+        default=None,
+        description="ClickHouse HTTP/native endpoint (e.g. http://192.168.1.100:8123)",
+    )
+    qdrant_url: Optional[str] = Field(
+        default=None,
+        description="Qdrant REST/gRPC endpoint (e.g. http://192.168.1.100:6333)",
+    )
+    media_storage_path: Optional[str] = Field(
+        default=None,
+        description="NAS / SMB / Local filesystem mount for heavy video/audio blobs",
+    )
 
 
 class DashboardOverviewStats(BaseModel):
@@ -1021,6 +1039,101 @@ class LiveStreamActionResponse(BaseModel):
     target_id: Optional[str] = None
     message: str = ""
     details: Dict[str, Any] = Field(default_factory=dict)
+
+
+class SearchQueryRequest(BaseModel):
+    query: str
+    top_k: int = 10
+    streamer_ids: Optional[List[str]] = None
+    vod_ids: Optional[List[str]] = None
+    content_types: Optional[List[str]] = None
+    start_time: Optional[float] = None
+    end_time: Optional[float] = None
+    hybrid_weight: float = 0.5
+    min_score: float = 0.0
+
+
+class SearchResultItem(BaseModel):
+    chunk_id: str
+    vod_id: str
+    streamer_id: str
+    timestamp_sec: float
+    timestamp_formatted: str
+    content_type: str
+    text: str
+    dense_score: float = 0.0
+    sparse_score: float = 0.0
+    combined_score: float = 0.0
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    video_url: str
+    chat_context: Optional[List[Dict[str, Any]]] = None
+
+
+class SearchResponse(BaseModel):
+    query: str
+    total_results: int
+    results: List[SearchResultItem]
+    execution_time_ms: float
+    hybrid_weight: float
+
+
+class RagSynthesisRequest(BaseModel):
+    query: str
+    streamer_ids: Optional[List[str]] = None
+    vod_ids: Optional[List[str]] = None
+    content_types: Optional[List[str]] = None
+    top_k: int = 8
+    temperature: float = 0.2
+    max_tokens: int = 500
+    model: Optional[str] = "local-heuristic"
+
+
+class RagSourceCitation(BaseModel):
+    vod_id: str
+    streamer_id: str
+    timestamp_sec: float
+    video_url: str
+    content_type: str
+    quote: str
+    relevance_score: float
+
+
+class RagSynthesisResponse(BaseModel):
+    query: str
+    answer: str
+    citations: List[RagSourceCitation] = Field(default_factory=list)
+    relevant_chunks: List[SearchResultItem] = Field(default_factory=list)
+    streamers_covered: List[str] = Field(default_factory=list)
+    execution_time_ms: float
+
+
+class IndexVodRequest(BaseModel):
+    vod_id: Optional[str] = None
+    reindex: bool = False
+    chunk_size_sec: float = 15.0
+    overlap_sec: float = 3.0
+
+
+class IndexVodResponse(BaseModel):
+    vod_id: str
+    status: str
+    chunks_indexed: int
+    speech_chunks: int = 0
+    chat_chunks: int = 0
+    ocr_chunks: int = 0
+    claim_chunks: int = 0
+    duration_sec: float = 0.0
+    message: str = ""
+
+
+class VectorIndexStats(BaseModel):
+    total_chunks: int
+    total_vods: int
+    total_streamers: int
+    chunks_by_type: Dict[str, int] = Field(default_factory=dict)
+    embedding_dim: int = 128
+    index_storage_bytes: int = 0
+
 
 
 

@@ -32,6 +32,10 @@
         <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
         Knowledge & Stances
       </button>
+      <button class="tab-btn" data-tab="tab-search">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        Semantic Search & RAG
+      </button>
       <button class="tab-btn" data-tab="tab-live">
         <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>
         Live Tail Monitor
@@ -334,7 +338,101 @@
       </div>
     </section>
 
-    <!-- VIEW 5: Live Tail Monitor -->
+    <!-- VIEW 5: Semantic Vector Search & Multimodal RAG (Spec 28) -->
+    <section id="tab-search" class="view-panel">
+      <!-- Search & Vector Stats Row -->
+      <div class="grid-3" style="margin-bottom: 24px;">
+        <div class="card">
+          <div class="card-title">Indexed Multimodal Chunks</div>
+          <div id="stat-search-chunks" class="stat-value">0</div>
+          <div class="stat-sub">Dense Vectors & Sparse Inverted Index</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Indexed VOD Archives</div>
+          <div id="stat-search-vods" class="stat-value">0</div>
+          <div class="stat-sub">Cross-Stream Knowledge Base</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Indexed Creators</div>
+          <div id="stat-search-streamers" class="stat-value">0</div>
+          <div class="stat-sub">Roster Attribution</div>
+        </div>
+      </div>
+
+      <!-- Query & Controls Card -->
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="card-title">Cross-Stream Semantic Search & Conversational RAG</div>
+        <div style="display: flex; gap: 12px; margin-top: 14px;">
+          <input
+            id="search-query-input"
+            type="text"
+            class="input-box"
+            placeholder="Ask anything across all streams, e.g. What did Asmongold and Shroud say about Deadlock's matchmaking?"
+            style="flex: 1;"
+          />
+          <button id="btn-search-hybrid" class="btn btn-primary">
+            🔍 Hybrid Search
+          </button>
+          <button id="btn-search-rag" class="btn btn-green">
+            ✨ RAG Synthesize
+          </button>
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin-top: 16px; font-size: 13px; color: var(--text-muted);">
+          <div>
+            <label for="search-filter-streamer" style="margin-right: 6px;">Streamer:</label>
+            <select id="search-filter-streamer" class="select-box" style="padding: 4px 8px;">
+              <option value="">All Streamers</option>
+              <option value="asmongold">Asmongold</option>
+              <option value="shroud">Shroud</option>
+              <option value="xqc">xQc</option>
+            </select>
+          </div>
+
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <span>Content Modalities:</span>
+            <label style="cursor: pointer;"><input type="checkbox" id="chk-speech" checked /> Speech</label>
+            <label style="cursor: pointer;"><input type="checkbox" id="chk-chat" checked /> Chat Bursts</label>
+            <label style="cursor: pointer;"><input type="checkbox" id="chk-ocr" checked /> Screen OCR</label>
+            <label style="cursor: pointer;"><input type="checkbox" id="chk-claims" checked /> Claims</label>
+          </div>
+
+          <div style="display: flex; gap: 8px; align-items: center; margin-left: auto;">
+            <span>Sparse BM25</span>
+            <input type="range" id="search-slider-hybrid" min="0.0" max="1.0" step="0.05" value="0.5" style="width: 120px;" />
+            <span>Dense Vector</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RAG Synthesis Answer Box -->
+      <div id="rag-response-card" class="card" style="display: none; margin-bottom: 24px; border: 1px solid var(--accent-purple);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div class="card-title" style="color: var(--accent-purple);">✨ Synthesized Cross-Stream Intelligence</div>
+          <span id="rag-exec-time" class="badge badge-purple">0.0 ms</span>
+        </div>
+        <div id="rag-answer-body" style="font-size: 14px; line-height: 1.6; white-space: pre-wrap; color: var(--text-main);"></div>
+        <div id="rag-citations-box" style="margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-color);">
+          <div style="font-weight: 600; font-size: 13px; margin-bottom: 8px; color: var(--text-muted);">Verified Media Citations:</div>
+          <div id="rag-citations-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+        </div>
+      </div>
+
+      <!-- Search Results Area -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div class="card-title">Retrieved Evidence Chunks</div>
+          <span id="search-results-count" class="badge badge-blue">0 results</span>
+        </div>
+        <div id="search-results-list" style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="text-align: center; color: var(--text-muted); padding: 30px;">
+            Enter a query above to search transcripts, OCR text, chat bursts, and claims across all streams.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 6: Live Tail Monitor -->
     <section id="tab-live" class="view-panel">
       <div class="grid-4" style="margin-bottom:20px;">
         <div class="card">

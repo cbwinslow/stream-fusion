@@ -1,0 +1,97 @@
+{
+  "properties": {
+    "query": {
+      "title": "Query",
+      "type": "string"
+    },
+    "top_k": {
+      "default": 10,
+      "title": "Top K",
+      "type": "integer"
+    },
+    "streamer_ids": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Streamer Ids"
+    },
+    "vod_ids": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Vod Ids"
+    },
+    "content_types": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Content Types"
+    },
+    "start_time": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Start Time"
+    },
+    "end_time": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "End Time"
+    },
+    "hybrid_weight": {
+      "default": 0.5,
+      "title": "Hybrid Weight",
+      "type": "number"
+    },
+    "min_score": {
+      "default": 0.0,
+      "title": "Min Score",
+      "type": "number"
+    }
+  },
+  "required": [
+    "query"
+  ],
+  "title": "SearchQueryRequest",
+  "type": "object"
+}

@@ -1,0 +1,43 @@
+{
+  "properties": {
+    "vod_id": {
+      "title": "Vod Id",
+      "type": "string"
+    },
+    "streamer_id": {
+      "title": "Streamer Id",
+      "type": "string"
+    },
+    "timestamp_sec": {
+      "title": "Timestamp Sec",
+      "type": "number"
+    },
+    "video_url": {
+      "title": "Video Url",
+      "type": "string"
+    },
+    "content_type": {
+      "title": "Content Type",
+      "type": "string"
+    },
+    "quote": {
+      "title": "Quote",
+      "type": "string"
+    },
+    "relevance_score": {
+      "title": "Relevance Score",
+      "type": "number"
+    }
+  },
+  "required": [
+    "vod_id",
+    "streamer_id",
+    "timestamp_sec",
+    "video_url",
+    "content_type",
+    "quote",
+    "relevance_score"
+  ],
+  "title": "RagSourceCitation",
+  "type": "object"
+}

@@ -1,0 +1,84 @@
+{
+  "properties": {
+    "chunk_id": {
+      "title": "Chunk Id",
+      "type": "string"
+    },
+    "vod_id": {
+      "title": "Vod Id",
+      "type": "string"
+    },
+    "streamer_id": {
+      "title": "Streamer Id",
+      "type": "string"
+    },
+    "timestamp_sec": {
+      "title": "Timestamp Sec",
+      "type": "number"
+    },
+    "timestamp_formatted": {
+      "title": "Timestamp Formatted",
+      "type": "string"
+    },
+    "content_type": {
+      "title": "Content Type",
+      "type": "string"
+    },
+    "text": {
+      "title": "Text",
+      "type": "string"
+    },
+    "dense_score": {
+      "default": 0.0,
+      "title": "Dense Score",
+      "type": "number"
+    },
+    "sparse_score": {
+      "default": 0.0,
+      "title": "Sparse Score",
+      "type": "number"
+    },
+    "combined_score": {
+      "default": 0.0,
+      "title": "Combined Score",
+      "type": "number"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    },
+    "video_url": {
+      "title": "Video Url",
+      "type": "string"
+    },
+    "chat_context": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Chat Context"
+    }
+  },
+  "required": [
+    "chunk_id",
+    "vod_id",
+    "streamer_id",
+    "timestamp_sec",
+    "timestamp_formatted",
+    "content_type",
+    "text",
+    "video_url"
+  ],
+  "title": "SearchResultItem",
+  "type": "object"
+}

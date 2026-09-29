@@ -1,0 +1,85 @@
+{
+  "properties": {
+    "query": {
+      "title": "Query",
+      "type": "string"
+    },
+    "streamer_ids": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Streamer Ids"
+    },
+    "vod_ids": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Vod Ids"
+    },
+    "content_types": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Content Types"
+    },
+    "top_k": {
+      "default": 8,
+      "title": "Top K",
+      "type": "integer"
+    },
+    "temperature": {
+      "default": 0.2,
+      "title": "Temperature",
+      "type": "number"
+    },
+    "max_tokens": {
+      "default": 500,
+      "title": "Max Tokens",
+      "type": "integer"
+    },
+    "model": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "local-heuristic",
+      "title": "Model"
+    }
+  },
+  "required": [
+    "query"
+  ],
+  "title": "RagSynthesisRequest",
+  "type": "object"
+}

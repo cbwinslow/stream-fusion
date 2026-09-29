@@ -93,6 +93,15 @@ class SchemaRegistry:
             "ShortStudioExportRequest",
             "LiveTailSubscriptionRequest",
             "LiveStreamActionResponse",
+            "SearchQueryRequest",
+            "SearchResultItem",
+            "SearchResponse",
+            "RagSynthesisRequest",
+            "RagSourceCitation",
+            "RagSynthesisResponse",
+            "IndexVodRequest",
+            "IndexVodResponse",
+            "VectorIndexStats",
         ]:
 
             if hasattr(model_schemas, name):

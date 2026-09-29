@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadShorts();
   loadKnowledge();
   loadLiveStatus();
+  initSearchEngine();
 });
 
 // --- Tab Switching ---
@@ -578,3 +579,223 @@ function recordLiveBurst(burst) {
     termSpan.textContent = `Burst: ${burst.dominant_term || 'POG'} (${burst.burst_type || 'BURST'})`;
   }
 }
+
+// --- View 6: Semantic Vector Search & Multimodal RAG (Spec 28) ---
+function initSearchEngine() {
+  loadSearchStats();
+
+  const btnSearch = document.getElementById("btn-search-hybrid");
+  const btnRag = document.getElementById("btn-search-rag");
+  const inputQuery = document.getElementById("search-query-input");
+
+  if (btnSearch) {
+    btnSearch.addEventListener("click", () => runSemanticSearch());
+  }
+
+  if (btnRag) {
+    btnRag.addEventListener("click", () => runRagSynthesis());
+  }
+
+  if (inputQuery) {
+    inputQuery.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        runSemanticSearch();
+      }
+    });
+  }
+}
+
+async function loadSearchStats() {
+  try {
+    const res = await fetch("/api/search/stats");
+    if (!res.ok) return;
+    const stats = await res.json();
+    const statChunks = document.getElementById("stat-search-chunks");
+    const statVods = document.getElementById("stat-search-vods");
+    const statStreamers = document.getElementById("stat-search-streamers");
+    if (statChunks) statChunks.textContent = stats.total_chunks || 0;
+    if (statVods) statVods.textContent = stats.total_vods || 0;
+    if (statStreamers) statStreamers.textContent = stats.total_streamers || 0;
+  } catch (err) {
+    console.error("Error loading search stats", err);
+  }
+}
+
+function getSelectedModalities() {
+  const mods = [];
+  if (document.getElementById("chk-speech")?.checked) mods.push("speech");
+  if (document.getElementById("chk-chat")?.checked) mods.push("chat");
+  if (document.getElementById("chk-ocr")?.checked) mods.push("ocr");
+  if (document.getElementById("chk-claims")?.checked) mods.push("claim");
+  return mods;
+}
+
+async function runSemanticSearch() {
+  const input = document.getElementById("search-query-input");
+  const query = (input?.value || "").trim();
+  if (!query) return;
+
+  const streamer = document.getElementById("search-filter-streamer")?.value || null;
+  const hybridWeight = parseFloat(document.getElementById("search-slider-hybrid")?.value || "0.5");
+  const modalities = getSelectedModalities();
+
+  const resultsList = document.getElementById("search-results-list");
+  const countBadge = document.getElementById("search-results-count");
+  if (resultsList) {
+    resultsList.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding:30px;">Searching indexed chunks across dense and sparse indexes...</div>`;
+  }
+
+  try {
+    const payload = {
+      query: query,
+      top_k: 15,
+      streamer_ids: streamer ? [streamer] : null,
+      content_types: modalities.length > 0 ? modalities : null,
+      hybrid_weight: hybridWeight,
+      min_score: 0.0,
+    };
+
+    const res = await fetch("/api/search/semantic", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      if (resultsList) resultsList.innerHTML = `<div style="color:var(--accent-red); padding:20px;">Search request failed (${res.status}).</div>`;
+      return;
+    }
+
+    const data = await res.json();
+    if (countBadge) countBadge.textContent = `${data.total_results} results (${data.execution_time_ms} ms)`;
+    renderSearchResults(data.results || []);
+  } catch (err) {
+    console.error("Search error", err);
+    if (resultsList) resultsList.innerHTML = `<div style="color:var(--accent-red); padding:20px;">Failed to execute search.</div>`;
+  }
+}
+
+async function runRagSynthesis() {
+  const input = document.getElementById("search-query-input");
+  const query = (input?.value || "").trim();
+  if (!query) return;
+
+  const streamer = document.getElementById("search-filter-streamer")?.value || null;
+  const modalities = getSelectedModalities();
+
+  const ragCard = document.getElementById("rag-response-card");
+  const ragBody = document.getElementById("rag-answer-body");
+  const ragExec = document.getElementById("rag-exec-time");
+  const ragCitationsList = document.getElementById("rag-citations-list");
+
+  if (ragCard) ragCard.style.display = "block";
+  if (ragBody) ragBody.textContent = "Synthesizing cross-stream knowledge, analyzing stances, and grounding claims...";
+  if (ragCitationsList) ragCitationsList.innerHTML = "";
+
+  try {
+    const payload = {
+      query: query,
+      streamer_ids: streamer ? [streamer] : null,
+      content_types: modalities.length > 0 ? modalities : null,
+      top_k: 8,
+    };
+
+    const res = await fetch("/api/search/rag", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      if (ragBody) ragBody.textContent = `Synthesis request failed with code ${res.status}.`;
+      return;
+    }
+
+    const data = await res.json();
+    if (ragExec) ragExec.textContent = `${data.execution_time_ms} ms`;
+    if (ragBody) ragBody.textContent = data.answer;
+
+    if (ragCitationsList && data.citations && data.citations.length > 0) {
+      ragCitationsList.innerHTML = data.citations
+        .map((cit) => {
+          const sName = (cit.streamer_id || "streamer").toUpperCase();
+          const ts = Math.floor(cit.timestamp_sec || 0);
+          const mins = Math.floor(ts / 60);
+          const secs = ts % 60;
+          const tsStr = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+          return `
+            <div style="background:var(--bg-secondary); border-radius:6px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <span class="badge badge-yellow" style="margin-right:6px;">${sName}</span>
+                <span style="font-size:13px; color:var(--text-main); font-style:italic;">"${cit.quote}"</span>
+              </div>
+              <a href="${cit.video_url}" target="_blank" class="badge badge-purple" style="text-decoration:none; white-space:nowrap; margin-left:12px;">
+                ▶ Jump to ${tsStr}
+              </a>
+            </div>
+          `;
+        })
+        .join("");
+    } else if (ragCitationsList) {
+      ragCitationsList.innerHTML = `<div style="color:var(--text-muted); font-size:12px;">No direct citations extracted.</div>`;
+    }
+
+    // Also populate evidence chunks below
+    if (data.relevant_chunks) {
+      renderSearchResults(data.relevant_chunks);
+    }
+  } catch (err) {
+    console.error("RAG error", err);
+    if (ragBody) ragBody.textContent = "Error communicating with RAG synthesis engine.";
+  }
+}
+
+function renderSearchResults(results) {
+  const container = document.getElementById("search-results-list");
+  if (!container) return;
+
+  if (!results || results.length === 0) {
+    container.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding:30px;">No matching moments found for this query.</div>`;
+    return;
+  }
+
+  container.innerHTML = results
+    .map((r) => {
+      const typeBadgeClass =
+        r.content_type === "speech" ? "badge-blue" :
+        r.content_type === "chat" ? "badge-yellow" :
+        r.content_type === "ocr" ? "badge-green" : "badge-purple";
+
+      let chatContextHtml = "";
+      if (r.chat_context && r.chat_context.length > 0) {
+        const chatSnippet = r.chat_context
+          .slice(0, 3)
+          .map((m) => `<b>${m.author}:</b> ${m.text}`)
+          .join(" | ");
+        chatContextHtml = `<div style="margin-top:6px; font-size:12px; color:var(--text-muted); background:var(--bg-main); padding:4px 8px; border-radius:4px;">💬 Chat around this moment: ${chatSnippet}</div>`;
+      }
+
+      return `
+        <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:8px; padding:12px 16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <div style="display:flex; gap:8px; align-items:center;">
+              <span class="badge ${typeBadgeClass}">${(r.content_type || 'chunk').toUpperCase()}</span>
+              <span style="font-weight:600; color:var(--accent-blue);">${(r.streamer_id || 'streamer').toUpperCase()}</span>
+              <a href="${r.video_url}" target="_blank" class="badge badge-purple" style="text-decoration:none;">
+                ▶ ${r.timestamp_formatted}
+              </a>
+            </div>
+            <div style="font-size:12px; color:var(--text-muted); display:flex; gap:12px;">
+              <span>Score: <b>${r.combined_score}</b></span>
+              <span>Dense: ${r.dense_score}</span>
+              <span>Sparse: ${r.sparse_score}</span>
+            </div>
+          </div>
+          <div style="font-size:13.5px; line-height:1.5; color:var(--text-main);">${r.text}</div>
+          ${chatContextHtml}
+        </div>
+      `;
+    })
+    .join("");
+}
+

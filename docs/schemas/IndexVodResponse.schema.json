@@ -1,0 +1,53 @@
+{
+  "properties": {
+    "vod_id": {
+      "title": "Vod Id",
+      "type": "string"
+    },
+    "status": {
+      "title": "Status",
+      "type": "string"
+    },
+    "chunks_indexed": {
+      "title": "Chunks Indexed",
+      "type": "integer"
+    },
+    "speech_chunks": {
+      "default": 0,
+      "title": "Speech Chunks",
+      "type": "integer"
+    },
+    "chat_chunks": {
+      "default": 0,
+      "title": "Chat Chunks",
+      "type": "integer"
+    },
+    "ocr_chunks": {
+      "default": 0,
+      "title": "Ocr Chunks",
+      "type": "integer"
+    },
+    "claim_chunks": {
+      "default": 0,
+      "title": "Claim Chunks",
+      "type": "integer"
+    },
+    "duration_sec": {
+      "default": 0.0,
+      "title": "Duration Sec",
+      "type": "number"
+    },
+    "message": {
+      "default": "",
+      "title": "Message",
+      "type": "string"
+    }
+  },
+  "required": [
+    "vod_id",
+    "status",
+    "chunks_indexed"
+  ],
+  "title": "IndexVodResponse",
+  "type": "object"
+}
