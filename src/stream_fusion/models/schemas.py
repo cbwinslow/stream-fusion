@@ -875,6 +875,75 @@ class HarvesterStatusReport(BaseModel):
     active_downloads: List[Dict[str, Any]] = Field(default_factory=list)
 
 
+# --- Spec 26: Homelab 24/7 Scheduler Daemon & Service Orchestration ---
+
+class DaemonState(str, Enum):
+    STOPPED = "STOPPED"
+    STARTING = "STARTING"
+    RUNNING = "RUNNING"
+    PAUSED = "PAUSED"
+    DRAINING = "DRAINING"
+    ERROR = "ERROR"
+
+
+class DaemonTaskType(str, Enum):
+    CRAWL = "CRAWL"
+    DOWNLOAD = "DOWNLOAD"
+    PIPELINE = "PIPELINE"
+    HOUSEKEEPING = "HOUSEKEEPING"
+
+
+class DaemonConfig(BaseModel):
+    crawl_interval_minutes: int = Field(default=30, description="Interval between roster channel crawls in minutes")
+    download_poll_interval_seconds: int = Field(default=15, description="Interval to check and dispatch queued downloads in seconds")
+    auto_analyze: bool = Field(default=True, description="Automatically trigger FullSpectrumPipeline upon harvest")
+    max_concurrent_downloads: int = Field(default=2, description="Max concurrent download workers")
+    max_concurrent_pipelines: int = Field(default=1, description="Max concurrent pipeline analysis processes (1 to prevent GPU/CPU thrashing)")
+    min_free_disk_gb: float = Field(default=50.0, description="Minimum free disk space threshold in GB")
+    retention_days: Optional[int] = Field(None, description="Optional raw video retention in days before pruning media.mp4")
+    pid_file: str = Field(default="daemon.pid", description="Lockfile path tracking daemon process ID")
+    log_file: str = Field(default="logs/daemon.log", description="Path to daemon log file")
+    homelab_root: str = Field(default="./homelab_storage", description="Root homelab storage directory")
+    catalog_db_url: str = Field(default="sqlite:///homelab_storage/catalog.db", description="Database connection URL")
+    enable_shorts: bool = Field(default=True, description="Produce 9:16 vertical shorts in pipeline")
+    enable_web_grounding: bool = Field(default=True, description="Ground claims in pipeline")
+    enable_adaptive_slang: bool = Field(default=True, description="Update slang lexicon in pipeline")
+    enable_sponsor_quantifier: bool = Field(default=True, description="Audit sponsors in pipeline")
+    dry_run_shorts: bool = Field(default=False, description="Stage shorts without full video rendering")
+
+
+class DaemonJobRecord(BaseModel):
+    job_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    task_type: DaemonTaskType
+    target_id: Optional[str] = None  # e.g. vod_id or streamer_id
+    status: str = "PENDING"  # PENDING, RUNNING, COMPLETED, FAILED
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    completed_at: Optional[datetime] = None
+    duration_sec: float = 0.0
+    error_message: Optional[str] = None
+    details: Dict[str, Any] = Field(default_factory=dict)
+
+
+class DaemonStatusReport(BaseModel):
+    state: DaemonState = DaemonState.STOPPED
+    pid: Optional[int] = None
+    uptime_seconds: float = 0.0
+    started_at: Optional[datetime] = None
+    last_crawl_at: Optional[datetime] = None
+    next_crawl_at: Optional[datetime] = None
+    active_downloads: List[Dict[str, Any]] = Field(default_factory=list)
+    active_pipeline_vod: Optional[str] = None
+    queued_vods_count: int = 0
+    downloading_vods_count: int = 0
+    harvested_vods_count: int = 0
+    analyzed_vods_count: int = 0
+    error_vods_count: int = 0
+    free_disk_gb: float = 0.0
+    recent_errors: List[str] = Field(default_factory=list)
+    recent_jobs: List[DaemonJobRecord] = Field(default_factory=list)
+
+
+
 
 
 

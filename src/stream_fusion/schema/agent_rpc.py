@@ -59,6 +59,13 @@ class AgentRpcDispatcher:
         self.register_handler("streamfusion.harvest.getHarvesterStatus", self._handle_harvest_get_status)
         self.register_handler("streamfusion.harvest.listHarvestedVods", self._handle_harvest_list_vods)
         self.register_handler("streamfusion.harvest.triggerPipeline", self._handle_harvest_trigger_pipeline)
+        # Spec 26: Homelab Scheduler Daemon & Supervisor
+        self.register_handler("streamfusion.daemon.getStatus", self._handle_daemon_get_status)
+        self.register_handler("streamfusion.daemon.triggerCrawl", self._handle_daemon_trigger_crawl)
+        self.register_handler("streamfusion.daemon.pause", self._handle_daemon_pause)
+        self.register_handler("streamfusion.daemon.resume", self._handle_daemon_resume)
+        self.register_handler("streamfusion.daemon.stop", self._handle_daemon_stop)
+        self._active_daemon: Optional[Any] = None
 
     def register_handler(
         self, method: str, handler: Callable[[Dict[str, Any]], Any]
@@ -671,6 +678,60 @@ class AgentRpcDispatcher:
             "analysis_id": analysis.stream_id,
             "status": "COMPLETED",
         }
+
+    def set_daemon(self, daemon: Any) -> None:
+        """Sets the active HomelabDaemon instance for JSON-RPC management."""
+        self._active_daemon = daemon
+
+    def _handle_daemon_get_status(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        if self._active_daemon:
+            return self._active_daemon.get_status().model_dump(mode="json")
+
+        from stream_fusion.harvester.daemon import HomelabDaemon, is_process_running
+        from stream_fusion.models.schemas import DaemonConfig, DaemonState, DaemonStatusReport
+
+        pid_file = Path(params.get("pid_file", "daemon.pid"))
+        pid = None
+        state = DaemonState.STOPPED
+        if pid_file.exists():
+            try:
+                with open(pid_file, "r", encoding="utf-8") as f:
+                    val = f.read().strip()
+                    if val:
+                        p_val = int(val)
+                        if is_process_running(p_val):
+                            pid = p_val
+                            state = DaemonState.RUNNING
+            except Exception:
+                pass
+
+        report = DaemonStatusReport(state=state, pid=pid)
+        return report.model_dump(mode="json")
+
+    def _handle_daemon_trigger_crawl(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        if not self._active_daemon:
+            raise RuntimeError("No active daemon running to trigger crawl.")
+        result = self._active_daemon.trigger_crawl()
+        return {"result": result, "status": "TRIGGERED"}
+
+    def _handle_daemon_pause(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        if not self._active_daemon:
+            raise RuntimeError("No active daemon running to pause.")
+        self._active_daemon.pause()
+        return {"status": "PAUSED"}
+
+    def _handle_daemon_resume(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        if not self._active_daemon:
+            raise RuntimeError("No active daemon running to resume.")
+        self._active_daemon.resume()
+        return {"status": "RUNNING"}
+
+    def _handle_daemon_stop(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        if not self._active_daemon:
+            raise RuntimeError("No active daemon running to stop.")
+        self._active_daemon.stop()
+        return {"status": "STOPPING"}
+
 
 
 

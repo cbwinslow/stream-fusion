@@ -1,0 +1,85 @@
+{
+  "$defs": {
+    "DaemonTaskType": {
+      "enum": [
+        "CRAWL",
+        "DOWNLOAD",
+        "PIPELINE",
+        "HOUSEKEEPING"
+      ],
+      "title": "DaemonTaskType",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "job_id": {
+      "title": "Job Id",
+      "type": "string"
+    },
+    "task_type": {
+      "$ref": "#/$defs/DaemonTaskType"
+    },
+    "target_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Target Id"
+    },
+    "status": {
+      "default": "PENDING",
+      "title": "Status",
+      "type": "string"
+    },
+    "started_at": {
+      "format": "date-time",
+      "title": "Started At",
+      "type": "string"
+    },
+    "completed_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Completed At"
+    },
+    "duration_sec": {
+      "default": 0.0,
+      "title": "Duration Sec",
+      "type": "number"
+    },
+    "error_message": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Error Message"
+    },
+    "details": {
+      "additionalProperties": true,
+      "title": "Details",
+      "type": "object"
+    }
+  },
+  "required": [
+    "task_type"
+  ],
+  "title": "DaemonJobRecord",
+  "type": "object"
+}

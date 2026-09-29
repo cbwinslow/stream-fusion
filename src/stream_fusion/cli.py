@@ -1987,9 +1987,212 @@ def harvest_ingest_to_pipeline(
     console.print(f"  • Shorts Produced: [cyan]{manifest.shorts_produced_count}[/cyan]")
 
 
+# --- Spec 26: Homelab 24/7 Scheduler Daemon & Background Supervisor CLI ---
+daemon_app = typer.Typer(
+    name="daemon",
+    help="Homelab 24/7 Scheduler Daemon & Background Supervisor (Spec 26)",
+    no_args_is_help=True,
+)
+app.add_typer(daemon_app, name="daemon")
+
+
+@daemon_app.command(name="run")
+def daemon_run(
+    config: Optional[Path] = typer.Option(None, "--config", "-c", help="Path to daemon YAML/JSON configuration"),
+    foreground: bool = typer.Option(True, "--foreground/--background", help="Run supervisor in foreground"),
+    auto_analyze: bool = typer.Option(True, "--auto-analyze/--no-auto-analyze", help="Automatically trigger pipeline for harvested VODs"),
+    workers: Optional[int] = typer.Option(None, "--workers", "-w", help="Override max concurrent download workers"),
+    db: Optional[str] = typer.Option(None, "--db", help="Override catalog database URL"),
+    homelab_root: Optional[Path] = typer.Option(None, "--homelab-root", help="Override root homelab storage path"),
+    crawl_interval: Optional[int] = typer.Option(None, "--crawl-interval", help="Channel crawl interval in minutes"),
+):
+    """Starts the StreamFusion 24/7 background supervisor daemon."""
+    import yaml
+    from stream_fusion.harvester.daemon import HomelabDaemon
+    from stream_fusion.models.schemas import DaemonConfig
+
+    d_config = DaemonConfig()
+
+    # Load from config file if provided or default exists
+    cfg_path = config or Path("config/daemon.yaml")
+    if cfg_path and cfg_path.exists():
+        console.print(f"[bold purple]StreamFusion Daemon[/bold purple]: Loading configuration from {cfg_path}...")
+        with open(cfg_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+            d_config = DaemonConfig(**data)
+
+    # Apply CLI overrides
+    d_config.auto_analyze = auto_analyze
+    if workers is not None:
+        d_config.max_concurrent_downloads = workers
+    if db is not None:
+        d_config.catalog_db_url = db
+    if homelab_root is not None:
+        d_config.homelab_root = str(homelab_root)
+    if crawl_interval is not None:
+        d_config.crawl_interval_minutes = crawl_interval
+
+    console.print("[bold green]Starting StreamFusion Homelab Daemon...[/bold green]")
+    console.print(f"  • Storage Root: [cyan]{d_config.homelab_root}[/cyan]")
+    console.print(f"  • Database: [cyan]{d_config.catalog_db_url}[/cyan]")
+    console.print(f"  • Crawl Interval: [cyan]{d_config.crawl_interval_minutes}m[/cyan]")
+    console.print(f"  • Auto-Analyze: [cyan]{d_config.auto_analyze}[/cyan]")
+
+    daemon = HomelabDaemon(config=d_config)
+    try:
+        daemon.start(foreground=foreground)
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Shutdown signal received. Stopping daemon...[/yellow]")
+        daemon.stop()
+    except Exception as e:
+        console.print(f"[bold red]Daemon execution error:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
+@daemon_app.command(name="status")
+def daemon_status(
+    config: Optional[Path] = typer.Option(None, "--config", "-c", help="Path to daemon YAML/JSON configuration"),
+    pid_file: Path = typer.Option(Path("daemon.pid"), "--pid-file", help="Path to daemon PID lockfile"),
+    db: Path = typer.Option(Path("homelab_storage/catalog.db"), "--db", help="Path to catalog database"),
+):
+    """Displays real-time operational status, queues, and health of the daemon."""
+    import psutil
+    from stream_fusion.harvester.catalog import HarvestCatalog
+    from stream_fusion.harvester.daemon import is_process_running
+
+    pid = None
+    is_running = False
+    if pid_file.exists():
+        try:
+            with open(pid_file, "r", encoding="utf-8") as f:
+                p_text = f.read().strip()
+                if p_text:
+                    p_val = int(p_text)
+                    if is_process_running(p_val):
+                        pid = p_val
+                        is_running = True
+        except Exception:
+            pass
+
+    table = Table(title="🖥️  StreamFusion 24/7 Homelab Daemon Status")
+    table.add_column("Property", style="bold")
+    table.add_column("Value", style="cyan")
+
+    state_style = "[bold green]RUNNING[/bold green]" if is_running else "[bold yellow]STOPPED[/bold yellow]"
+    table.add_row("Daemon State", state_style)
+    table.add_row("Process ID (PID)", str(pid) if pid else "N/A")
+
+    if is_running and pid:
+        try:
+            proc = psutil.Process(pid)
+            cpu_pct = proc.cpu_percent(interval=0.1)
+            mem_mb = proc.memory_info().rss / (1024 * 1024)
+            table.add_row("Daemon CPU", f"{cpu_pct:.1f}%")
+            table.add_row("Daemon Memory (RAM)", f"{mem_mb:.1f} MB")
+        except Exception:
+            pass
+
+    # Read catalog queues if catalog DB exists
+    db_file = db if db.exists() else Path("catalog.db")
+    if db_file.exists():
+        cat = HarvestCatalog(database_url=db_file)
+        counts = cat.count_vods_by_status()
+        cat.close()
+        table.add_section()
+        table.add_row("Queued VODs", str(counts.get("QUEUED", 0)))
+        table.add_row("Downloading VODs", str(counts.get("DOWNLOADING", 0)))
+        table.add_row("Harvested (Ready)", str(counts.get("HARVESTED", 0) + counts.get("READY_FOR_ANALYSIS", 0)))
+        table.add_row("Analyzed (Complete)", str(counts.get("ANALYZED", 0)))
+        table.add_row("Errors Encountered", str(counts.get("ERROR", 0)))
+
+    console.print(table)
+
+
+@daemon_app.command(name="stop")
+def daemon_stop(
+    pid_file: Path = typer.Option(Path("daemon.pid"), "--pid-file", help="Path to daemon PID lockfile"),
+):
+    """Gracefully terminates the background daemon process."""
+    import signal
+    import psutil
+    from stream_fusion.harvester.daemon import is_process_running
+
+    if not pid_file.exists():
+        console.print("[yellow]No daemon PID lockfile found. Daemon is not running.[/yellow]")
+        return
+
+    try:
+        with open(pid_file, "r", encoding="utf-8") as f:
+            pid = int(f.read().strip())
+    except Exception as e:
+        console.print(f"[bold red]Could not read PID file:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+    if not is_process_running(pid):
+        console.print(f"[yellow]Process {pid} is not running. Cleaning up stale PID file.[/yellow]")
+        pid_file.unlink(missing_ok=True)
+        return
+
+    console.print(f"[bold purple]Sending graceful termination signal to Daemon (PID: {pid})...[/bold purple]")
+    try:
+        proc = psutil.Process(pid)
+        proc.terminate()
+        proc.wait(timeout=10)
+        console.print("[bold green][OK] Daemon stopped successfully.[/bold green]")
+    except psutil.TimeoutExpired:
+        console.print("[bold red]Daemon did not exit within timeout. Killing process...[/bold red]")
+        proc.kill()
+    except Exception as e:
+        console.print(f"[bold red]Failed to stop daemon:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
+@daemon_app.command(name="trigger-crawl")
+def daemon_trigger_crawl(
+    db: Path = typer.Option(Path("homelab_storage/catalog.db"), "--db", help="Path to catalog database"),
+):
+    """Triggers an immediate channel crawl for all target streamers."""
+    from stream_fusion.harvester.catalog import HarvestCatalog
+    from stream_fusion.harvester.crawler import ChannelVodCrawler
+
+    db_path = db if db.exists() else Path("catalog.db")
+    catalog = HarvestCatalog(database_url=db_path)
+    crawler = ChannelVodCrawler()
+
+    console.print("[bold purple]StreamFusion Crawler[/bold purple]: Triggering immediate channel crawl...")
+    results = crawler.sync_all(catalog=catalog, auto_queue=True)
+    total = sum(len(vods) for vods in results.values())
+    for s_id, vods in results.items():
+        if vods:
+            console.print(f"  • [cyan]{s_id}[/cyan]: {len(vods)} new VODs discovered")
+    console.print(f"[bold green][OK] Crawl finished: {total} total new VOD(s) queued.[/bold green]")
+    catalog.close()
+
+
+@daemon_app.command(name="init-config")
+def daemon_init_config(
+    output: Path = typer.Option(Path("config/daemon.yaml"), "--output", "-o", help="Destination config path"),
+):
+    """Initializes a new daemon configuration file with default settings."""
+    import yaml
+    from stream_fusion.models.schemas import DaemonConfig
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    if output.exists():
+        console.print(f"[yellow]Configuration file already exists at {output}[/yellow]")
+        return
+
+    d_config = DaemonConfig()
+    with open(output, "w", encoding="utf-8") as f:
+        yaml.dump(d_config.model_dump(mode="json"), f, sort_keys=False)
+
+    console.print(f"[bold green][OK] Created default daemon configuration at {output}[/bold green]")
+
+
 if __name__ == "__main__":
 
     app()
+
 
 
 

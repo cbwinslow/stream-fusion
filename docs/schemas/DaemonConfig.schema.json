@@ -1,0 +1,109 @@
+{
+  "properties": {
+    "crawl_interval_minutes": {
+      "default": 30,
+      "description": "Interval between roster channel crawls in minutes",
+      "title": "Crawl Interval Minutes",
+      "type": "integer"
+    },
+    "download_poll_interval_seconds": {
+      "default": 15,
+      "description": "Interval to check and dispatch queued downloads in seconds",
+      "title": "Download Poll Interval Seconds",
+      "type": "integer"
+    },
+    "auto_analyze": {
+      "default": true,
+      "description": "Automatically trigger FullSpectrumPipeline upon harvest",
+      "title": "Auto Analyze",
+      "type": "boolean"
+    },
+    "max_concurrent_downloads": {
+      "default": 2,
+      "description": "Max concurrent download workers",
+      "title": "Max Concurrent Downloads",
+      "type": "integer"
+    },
+    "max_concurrent_pipelines": {
+      "default": 1,
+      "description": "Max concurrent pipeline analysis processes (1 to prevent GPU/CPU thrashing)",
+      "title": "Max Concurrent Pipelines",
+      "type": "integer"
+    },
+    "min_free_disk_gb": {
+      "default": 50.0,
+      "description": "Minimum free disk space threshold in GB",
+      "title": "Min Free Disk Gb",
+      "type": "number"
+    },
+    "retention_days": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional raw video retention in days before pruning media.mp4",
+      "title": "Retention Days"
+    },
+    "pid_file": {
+      "default": "daemon.pid",
+      "description": "Lockfile path tracking daemon process ID",
+      "title": "Pid File",
+      "type": "string"
+    },
+    "log_file": {
+      "default": "logs/daemon.log",
+      "description": "Path to daemon log file",
+      "title": "Log File",
+      "type": "string"
+    },
+    "homelab_root": {
+      "default": "./homelab_storage",
+      "description": "Root homelab storage directory",
+      "title": "Homelab Root",
+      "type": "string"
+    },
+    "catalog_db_url": {
+      "default": "sqlite:///homelab_storage/catalog.db",
+      "description": "Database connection URL",
+      "title": "Catalog Db Url",
+      "type": "string"
+    },
+    "enable_shorts": {
+      "default": true,
+      "description": "Produce 9:16 vertical shorts in pipeline",
+      "title": "Enable Shorts",
+      "type": "boolean"
+    },
+    "enable_web_grounding": {
+      "default": true,
+      "description": "Ground claims in pipeline",
+      "title": "Enable Web Grounding",
+      "type": "boolean"
+    },
+    "enable_adaptive_slang": {
+      "default": true,
+      "description": "Update slang lexicon in pipeline",
+      "title": "Enable Adaptive Slang",
+      "type": "boolean"
+    },
+    "enable_sponsor_quantifier": {
+      "default": true,
+      "description": "Audit sponsors in pipeline",
+      "title": "Enable Sponsor Quantifier",
+      "type": "boolean"
+    },
+    "dry_run_shorts": {
+      "default": false,
+      "description": "Stage shorts without full video rendering",
+      "title": "Dry Run Shorts",
+      "type": "boolean"
+    }
+  },
+  "title": "DaemonConfig",
+  "type": "object"
+}

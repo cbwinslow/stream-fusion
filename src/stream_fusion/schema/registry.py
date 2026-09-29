@@ -84,6 +84,9 @@ class SchemaRegistry:
             "StreamerTargetRecord",
             "HarvestedVodRecord",
             "HarvesterStatusReport",
+            "DaemonConfig",
+            "DaemonJobRecord",
+            "DaemonStatusReport",
         ]:
 
             if hasattr(model_schemas, name):

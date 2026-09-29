@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  # Optional Clustered PostgreSQL Catalog Database (Spec 25/26)
+  postgres:
+    image: postgres:16-alpine
+    container_name: streamfusion-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: streamfusion
+      POSTGRES_USER: streamfusion
+      POSTGRES_PASSWORD: homelab_password_change_me
+    volumes:
+      - ../homelab_storage/postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U streamfusion -d streamfusion"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # StreamFusion 24/7 Background Supervisor Daemon
+  streamfusion-daemon:
+    image: python:3.11-slim
+    container_name: streamfusion-daemon
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /app
+    volumes:
+      # Mount project codebase
+      - ../:/app
+      # Mount shared homelab storage pool (or NAS NFS/SMB mount)
+      - ../homelab_storage:/app/homelab_storage
+    environment:
+      - STREAMFUSION_ENV=production
+      - CATALOG_DB_URL=postgresql://streamfusion:homelab_password_change_me@postgres:5432/streamfusion
+      - HOMELAB_ROOT=/app/homelab_storage
+      - PYTHONUNBUFFERED=1
+    command: >
+      sh -c "pip install -e . &&
+             streamfusion daemon run --foreground --config config/daemon.yaml"

@@ -1,0 +1,24 @@
+[Unit]
+Description=StreamFusion 24/7 Homelab Ingestion & Processing Daemon
+After=network.target network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=%USER%
+WorkingDirectory=/path/to/stream-fusion
+ExecStart=/path/to/stream-fusion/.venv/bin/streamfusion daemon run --foreground --config /path/to/stream-fusion/config/daemon.yaml
+ExecStop=/path/to/stream-fusion/.venv/bin/streamfusion daemon stop
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+KillMode=mixed
+StandardOutput=journal
+StandardError=journal
+
+# Hardware resource limits for homelab servers
+LimitNOFILE=65536
+Environment="PYTHONUNBUFFERED=1"
+
+[Install]
+WantedBy=multi-user.target

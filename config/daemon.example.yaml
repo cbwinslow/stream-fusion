@@ -1,0 +1,25 @@
+# StreamFusion 24/7 Homelab Daemon Configuration (Spec 26)
+
+# Crawler & Download Scheduling
+crawl_interval_minutes: 30
+download_poll_interval_seconds: 15
+max_concurrent_downloads: 2
+
+# Pipeline Orchestration
+auto_analyze: true
+max_concurrent_pipelines: 1 # Single pipeline concurrency to eliminate GPU VRAM contention
+enable_shorts: true
+enable_web_grounding: true
+enable_adaptive_slang: true
+enable_sponsor_quantifier: true
+dry_run_shorts: false
+
+# Storage, Housekeeping & Safeguards
+min_free_disk_gb: 50.0
+retention_days: null # Set e.g. 14 to prune raw media.mp4 after 14 days, keeping analytics
+homelab_root: "./homelab_storage"
+catalog_db_url: "sqlite:///homelab_storage/catalog.db"
+
+# Process & Logging
+pid_file: "daemon.pid"
+log_file: "logs/daemon.log"
