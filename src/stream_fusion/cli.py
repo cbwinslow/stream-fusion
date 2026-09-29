@@ -1758,7 +1758,237 @@ def run_all_cmd(
     )
 
 
+# --- Spec 25: Targeted Streamer Roster Ingestion & Homelab Harvester CLI ---
+harvest_app = typer.Typer(
+    name="harvest",
+    help="Targeted Streamer Roster Ingestion & Homelab Harvester CLI (Spec 25)",
+    no_args_is_help=True,
+)
+app.add_typer(harvest_app, name="harvest")
+
+
+@harvest_app.command(name="roster-add")
+def harvest_roster_add(
+    streamer_id: str = typer.Option(..., "--id", help="Normalized streamer ID slug (e.g. asmongold)"),
+    name: str = typer.Option(..., "--name", help="Display name of creator"),
+    url: List[str] = typer.Option(..., "--url", help="Platform channel URL(s)"),
+    platform: str = typer.Option("TWITCH", "--platform", help="Primary platform (TWITCH, YOUTUBE, KICK)"),
+    priority: int = typer.Option(5, "--priority", help="Download priority 1-10"),
+    quality: str = typer.Option("best", "--quality", help="Quality preset (best, 1080p, 720p, audio_only)"),
+    lookback: int = typer.Option(14, "--lookback", help="Lookback window in days"),
+    max_vods: int = typer.Option(5, "--max-vods", help="Max recent VODs to crawl per sync"),
+    tags: Optional[str] = typer.Option(None, "--tags", help="Comma-separated tags"),
+    db: Path = typer.Option(Path("catalog.db"), "--db", help="Path to catalog database"),
+):
+    """Adds or updates a target streamer in the harvester catalog."""
+    from stream_fusion.harvester.catalog import HarvestCatalog
+    from stream_fusion.models.schemas import StreamerTargetRecord
+
+    tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
+    record = StreamerTargetRecord(
+        streamer_id=streamer_id,
+        display_name=name,
+        channel_urls=url,
+        primary_platform=platform.upper(),
+        quality_preset=quality,
+        download_priority=priority,
+        lookback_days=lookback,
+        max_recent_vods=max_vods,
+        tags=tag_list,
+    )
+    catalog = HarvestCatalog(database_url=db)
+    catalog.add_target(record)
+    catalog.close()
+    console.print(f"[bold green][OK] Added streamer target:[/bold green] {name} ({streamer_id}) [priority: {priority}]")
+
+
+@harvest_app.command(name="roster-import")
+def harvest_roster_import(
+    file: Path = typer.Option(..., "--file", "-f", help="Path to roster file (.yaml, .json, or .csv)"),
+    db: Path = typer.Option(Path("catalog.db"), "--db", help="Path to catalog database"),
+):
+    """Imports target streamers from a YAML, JSON, or CSV file."""
+    from stream_fusion.harvester.catalog import HarvestCatalog
+    from stream_fusion.harvester.roster import RosterLoader
+
+    records = RosterLoader.load(file)
+    catalog = HarvestCatalog(database_url=db)
+    for r in records:
+        catalog.add_target(r)
+    catalog.close()
+    console.print(f"[bold green][OK] Successfully imported {len(records)} streamer target(s) from {file.name}[/bold green]")
+
+
+@harvest_app.command(name="roster-list")
+def harvest_roster_list(
+    db: Path = typer.Option(Path("catalog.db"), "--db", help="Path to catalog database"),
+    enabled_only: bool = typer.Option(False, "--enabled-only", help="Filter for only enabled targets"),
+):
+    """Lists registered target streamers in the catalog."""
+    from stream_fusion.harvester.catalog import HarvestCatalog
+
+    catalog = HarvestCatalog(database_url=db)
+    targets = catalog.list_targets(enabled_only=enabled_only)
+    catalog.close()
+
+    table = Table(title="🎯 Streamer Target Roster")
+    table.add_column("Streamer ID", style="bold cyan")
+    table.add_column("Display Name", style="white")
+    table.add_column("Platform", justify="center")
+    table.add_column("Priority", justify="center", style="bold magenta")
+    table.add_column("Quality", justify="center")
+    table.add_column("Channels", style="dim")
+    table.add_column("Status", justify="center")
+
+    for t in targets:
+        st_color = "green" if t.enabled else "red"
+        st_text = "ENABLED" if t.enabled else "DISABLED"
+        table.add_row(
+            t.streamer_id,
+            t.display_name,
+            t.primary_platform,
+            str(t.download_priority),
+            t.quality_preset,
+            ", ".join(t.channel_urls[:2]),
+            f"[{st_color}]{st_text}[/]",
+        )
+
+    console.print(table)
+
+
+@harvest_app.command(name="sync")
+def harvest_sync(
+    db: Path = typer.Option(Path("catalog.db"), "--db", help="Path to catalog database"),
+    streamer_id: Optional[str] = typer.Option(None, "--streamer-id", "-s", help="Sync specific streamer ID"),
+):
+    """Crawls channels to discover and queue new unprocessed VODs."""
+    from stream_fusion.harvester.catalog import HarvestCatalog
+    from stream_fusion.harvester.crawler import ChannelVodCrawler
+
+    catalog = HarvestCatalog(database_url=db)
+    crawler = ChannelVodCrawler()
+
+    console.print("[bold purple]StreamFusion Crawler[/bold purple]: Syncing streamer channels for recent VODs...")
+    if streamer_id:
+        target = catalog.get_target(streamer_id)
+        if not target:
+            catalog.close()
+            console.print(f"[bold red]Streamer '{streamer_id}' not found in roster.[/bold red]")
+            raise typer.Exit(code=1)
+        discovered = crawler.discover_target_vods(target, catalog=catalog, auto_queue=True)
+        console.print(f"[bold green][OK] Streamer {streamer_id}: {len(discovered)} new VOD(s) queued.[/bold green]")
+    else:
+        results = crawler.sync_all(catalog=catalog, auto_queue=True)
+        total = sum(len(vods) for vods in results.values())
+        for s_id, vods in results.items():
+            if vods:
+                console.print(f"  • [cyan]{s_id}[/cyan]: {len(vods)} new VODs discovered")
+        console.print(f"[bold green][OK] Sync complete: {total} total new VOD(s) queued.[/bold green]")
+
+    catalog.close()
+
+
+@harvest_app.command(name="run")
+def harvest_run(
+    db: Path = typer.Option(Path("catalog.db"), "--db", help="Path to catalog database"),
+    homelab_root: Path = typer.Option(Path("./homelab_storage"), "--homelab-root", help="Root folder for homelab storage"),
+    workers: int = typer.Option(3, "--workers", "-w", help="Max concurrent download workers"),
+    limit: Optional[int] = typer.Option(None, "--limit", "-n", help="Limit number of VODs to process"),
+    simulate: bool = typer.Option(False, "--simulate", help="Run in simulation mode without external downloaders"),
+):
+    """Executes the harvester thread pool to download queued VODs."""
+    from stream_fusion.harvester.catalog import HarvestCatalog
+    from stream_fusion.harvester.engine import HomelabHarvester
+
+    catalog = HarvestCatalog(database_url=db)
+    harvester = HomelabHarvester(
+        catalog=catalog,
+        homelab_root=homelab_root,
+        max_concurrent_workers=workers,
+        simulate=simulate,
+    )
+
+    console.print(f"[bold purple]StreamFusion Harvester[/bold purple]: Processing queue with {workers} worker threads...")
+    harvested = harvester.process_queue(limit=limit)
+    catalog.close()
+
+    console.print(f"[bold green][OK] Harvester finished: {len(harvested)} VOD(s) successfully harvested to {homelab_root.resolve()}[/bold green]")
+
+
+@harvest_app.command(name="status")
+def harvest_status(
+    db: Path = typer.Option(Path("catalog.db"), "--db", help="Path to catalog database"),
+    homelab_root: Path = typer.Option(Path("./homelab_storage"), "--homelab-root", help="Root folder for homelab storage"),
+):
+    """Displays real-time harvester queues, worker activity, and storage stats."""
+    from stream_fusion.harvester.catalog import HarvestCatalog
+    from stream_fusion.harvester.engine import HomelabHarvester
+
+    catalog = HarvestCatalog(database_url=db)
+    harvester = HomelabHarvester(
+        catalog=catalog,
+        homelab_root=homelab_root,
+    )
+    status_rep = harvester.get_status()
+    catalog.close()
+
+    table = Table(title="📡 Homelab Harvester Status")
+    table.add_column("Metric", style="bold")
+    table.add_column("Value", justify="right", style="cyan")
+
+    table.add_row("Active Workers", f"{status_rep.active_workers} / {status_rep.max_workers}")
+    table.add_row("Queue Depth (Queued VODs)", str(status_rep.queue_depth))
+    table.add_row("Currently Downloading", str(status_rep.downloading_count))
+    table.add_row("Harvested / Ready", str(status_rep.harvested_count))
+    table.add_row("Errors Encountered", str(status_rep.error_count))
+    table.add_row("Free Disk Space", f"{status_rep.free_disk_gb:.1f} GB")
+
+    console.print(table)
+
+
+@harvest_app.command(name="ingest-to-pipeline")
+def harvest_ingest_to_pipeline(
+    vod_id: str = typer.Option(..., "--vod-id", help="VOD ID in the catalog to analyze"),
+    db: Path = typer.Option(Path("catalog.db"), "--db", help="Path to catalog database"),
+    out: Optional[Path] = typer.Option(None, "--out", "-o", help="Custom output directory"),
+    duration: Optional[float] = typer.Option(None, "--duration", "-d", help="Limit analysis to N seconds"),
+    shorts: int = typer.Option(3, "--shorts", "-k", help="Number of vertical shorts to produce"),
+    dry_run_shorts: bool = typer.Option(False, "--dry-run-shorts", help="Stage shorts packages without rendering video"),
+    ground_claims: bool = typer.Option(True, "--ground-claims/--no-ground-claims", help="Ground factual claims against live web"),
+    update_slang: bool = typer.Option(True, "--update-slang/--no-update-slang", help="Update adaptive slang lexicon from chat"),
+    sponsor: bool = typer.Option(True, "--sponsor/--no-sponsor", help="Audit stream sponsors"),
+    verify_checksums: bool = typer.Option(True, "--verify-checksums/--no-verify-checksums", help="Verify SHA-256 integrity"),
+):
+    """Bridges a harvested homelab VOD directly into the Full-Spectrum Pipeline."""
+    from stream_fusion.harvester.catalog import HarvestCatalog
+    from stream_fusion.harvester.bridge import ingest_to_pipeline
+
+    catalog = HarvestCatalog(database_url=db)
+    console.print(f"[bold purple]StreamFusion Pipeline Bridge[/bold purple]: Ingesting {vod_id}...")
+
+    analysis, manifest = ingest_to_pipeline(
+        vod_id=vod_id,
+        catalog=catalog,
+        output_dir=out,
+        duration_sec=duration,
+        verify_checksums=verify_checksums,
+        run_shorts=(shorts > 0),
+        dry_run_shorts=dry_run_shorts,
+        ground_claims=ground_claims,
+        update_slang=update_slang,
+        sponsor_audit=sponsor,
+        short_candidate_count=shorts,
+    )
+    catalog.close()
+
+    console.print(f"[bold green][OK] Successfully ingested {vod_id} into Full-Spectrum Pipeline![/bold green]")
+    console.print(f"  • Analysis ID: [cyan]{analysis.stream_id}[/cyan]")
+    console.print(f"  • Total Slices: [cyan]{manifest.total_fusion_slices}[/cyan]")
+    console.print(f"  • Shorts Produced: [cyan]{manifest.shorts_produced_count}[/cyan]")
+
+
 if __name__ == "__main__":
+
     app()
 
 

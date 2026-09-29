@@ -53,6 +53,12 @@ class AgentRpcDispatcher:
         self.register_handler("streamfusion.compareCrossAudience", self._handle_compare_cross_audience)
         self.register_handler("streamfusion.runFullSpectrum", self._handle_run_full_spectrum)
         self.register_handler("streamfusion.getFullSpectrumManifest", self._handle_get_full_spectrum_manifest)
+        # Spec 25: Homelab Harvester & Roster Ingestion
+        self.register_handler("streamfusion.harvest.syncRoster", self._handle_harvest_sync_roster)
+        self.register_handler("streamfusion.harvest.startHarvester", self._handle_harvest_start_harvester)
+        self.register_handler("streamfusion.harvest.getHarvesterStatus", self._handle_harvest_get_status)
+        self.register_handler("streamfusion.harvest.listHarvestedVods", self._handle_harvest_list_vods)
+        self.register_handler("streamfusion.harvest.triggerPipeline", self._handle_harvest_trigger_pipeline)
 
     def register_handler(
         self, method: str, handler: Callable[[Dict[str, Any]], Any]
@@ -552,6 +558,120 @@ class AgentRpcDispatcher:
         with open(manifest_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         return data
+
+    def _handle_harvest_sync_roster(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        from stream_fusion.harvester.catalog import HarvestCatalog
+        from stream_fusion.harvester.crawler import ChannelVodCrawler
+
+        db_url = params.get("database_url", "sqlite:///catalog.db")
+        catalog = HarvestCatalog(database_url=db_url)
+        crawler = ChannelVodCrawler()
+        streamer_id = params.get("streamer_id")
+        auto_queue = bool(params.get("auto_queue", True))
+
+        if streamer_id:
+            target = catalog.get_target(streamer_id)
+            if not target:
+                catalog.close()
+                raise ValueError(f"Streamer target '{streamer_id}' not found.")
+            discovered = crawler.discover_target_vods(target, catalog=catalog, auto_queue=auto_queue)
+            res = {streamer_id: [v.model_dump(mode="json") for v in discovered]}
+        else:
+            all_res = crawler.sync_all(catalog=catalog, auto_queue=auto_queue)
+            res = {k: [v.model_dump(mode="json") for v in vods] for k, vods in all_res.items()}
+
+        catalog.close()
+        return {"discovered": res, "status": "COMPLETED"}
+
+    def _handle_harvest_start_harvester(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        from stream_fusion.harvester.catalog import HarvestCatalog
+        from stream_fusion.harvester.engine import HomelabHarvester
+
+        db_url = params.get("database_url", "sqlite:///catalog.db")
+        catalog = HarvestCatalog(database_url=db_url)
+        homelab_root = Path(params.get("homelab_root", "./homelab_storage"))
+        max_workers = int(params.get("max_workers", 3))
+        limit = int(params.get("limit")) if params.get("limit") is not None else None
+        simulate = bool(params.get("simulate", False))
+
+        harvester = HomelabHarvester(
+            catalog=catalog,
+            homelab_root=homelab_root,
+            max_concurrent_workers=max_workers,
+            simulate=simulate,
+        )
+        harvested = harvester.process_queue(limit=limit)
+        catalog.close()
+        return {
+            "harvested_count": len(harvested),
+            "harvested": [v.model_dump(mode="json") for v in harvested],
+            "status": "COMPLETED",
+        }
+
+    def _handle_harvest_get_status(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        from stream_fusion.harvester.catalog import HarvestCatalog
+        from stream_fusion.harvester.engine import HomelabHarvester
+
+        db_url = params.get("database_url", "sqlite:///catalog.db")
+        catalog = HarvestCatalog(database_url=db_url)
+        homelab_root = Path(params.get("homelab_root", "./homelab_storage"))
+
+        harvester = HomelabHarvester(
+            catalog=catalog,
+            homelab_root=homelab_root,
+        )
+        status_rep = harvester.get_status()
+        catalog.close()
+        return status_rep.model_dump(mode="json")
+
+    def _handle_harvest_list_vods(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        from stream_fusion.harvester.catalog import HarvestCatalog
+
+        db_url = params.get("database_url", "sqlite:///catalog.db")
+        catalog = HarvestCatalog(database_url=db_url)
+        s_id = params.get("streamer_id")
+        status = params.get("status")
+        limit = int(params.get("limit")) if params.get("limit") is not None else None
+
+        vods = catalog.list_vods(streamer_id=s_id, status=status, limit=limit)
+        catalog.close()
+        return {
+            "vods": [v.model_dump(mode="json") for v in vods],
+            "count": len(vods),
+        }
+
+    def _handle_harvest_trigger_pipeline(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        from stream_fusion.harvester.catalog import HarvestCatalog
+        from stream_fusion.harvester.bridge import ingest_to_pipeline
+
+        vod_id = params.get("vod_id")
+        if not vod_id:
+            raise ValueError("Parameter 'vod_id' is required.")
+
+        db_url = params.get("database_url", "sqlite:///catalog.db")
+        catalog = HarvestCatalog(database_url=db_url)
+        output_dir = Path(params["output_dir"]) if params.get("output_dir") else None
+        duration = float(params["duration_sec"]) if params.get("duration_sec") is not None else None
+        run_shorts = bool(params.get("run_shorts", True))
+        dry_run_shorts = bool(params.get("dry_run_shorts", False))
+        ground_claims = bool(params.get("ground_claims", True))
+
+        analysis, manifest = ingest_to_pipeline(
+            vod_id=vod_id,
+            catalog=catalog,
+            output_dir=output_dir,
+            duration_sec=duration,
+            run_shorts=run_shorts,
+            dry_run_shorts=dry_run_shorts,
+            ground_claims=ground_claims,
+        )
+        catalog.close()
+        return {
+            "manifest": manifest.model_dump(mode="json"),
+            "analysis_id": analysis.stream_id,
+            "status": "COMPLETED",
+        }
+
 
 
 

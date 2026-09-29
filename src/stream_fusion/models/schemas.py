@@ -813,6 +813,69 @@ class FullSpectrumManifest(BaseModel):
     html_report_path: Optional[str] = None
 
 
+# --- Spec 25: Targeted Streamer Roster Ingestion & Homelab Harvester Pipeline ---
+
+class HarvestStatus(str, Enum):
+    DISCOVERED = "DISCOVERED"
+    QUEUED = "QUEUED"
+    DOWNLOADING = "DOWNLOADING"
+    HARVESTED = "HARVESTED"
+    READY_FOR_ANALYSIS = "READY_FOR_ANALYSIS"
+    ANALYZED = "ANALYZED"
+    ERROR = "ERROR"
+
+
+class StreamerTargetRecord(BaseModel):
+    streamer_id: str = Field(..., description="Normalized slug (e.g. 'asmongold')")
+    display_name: str = Field(..., description="Human-readable creator name (e.g. 'Asmongold')")
+    channel_urls: List[str] = Field(default_factory=list, description="Platform channel URLs")
+    primary_platform: str = Field(default="TWITCH", description="'TWITCH', 'YOUTUBE', 'KICK'")
+    quality_preset: str = Field(default="best", description="'best', '1080p', '720p', 'audio_only'")
+    include_chat: bool = Field(default=True, description="Whether to fetch chat replay")
+    max_recent_vods: int = Field(default=5, description="Max recent VODs to crawl per sync")
+    lookback_days: int = Field(default=14, description="How far back to search in days")
+    download_priority: int = Field(default=5, description="1 (lowest) to 10 (highest)")
+    destination_override: Optional[str] = Field(None, description="Custom storage subpath")
+    tags: List[str] = Field(default_factory=list, description="Categorization tags")
+    enabled: bool = Field(default=True, description="Whether actively crawled and downloaded")
+    created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_synced_at: Optional[datetime] = None
+    voiceprint_embedding: Optional[List[float]] = Field(None, description="Pre-seeded voiceprint acoustic embedding")
+
+
+class HarvestedVodRecord(BaseModel):
+    vod_id: str = Field(..., description="Unique VOD identifier, e.g. 'twitch_v123456789'")
+    streamer_id: str = Field(..., description="Foreign key to streamer_targets.streamer_id")
+    platform: str = Field(..., description="'TWITCH', 'YOUTUBE', 'KICK'")
+    title: str = Field(default="", description="Stream or VOD title")
+    published_at: Optional[datetime] = None
+    duration_sec: float = Field(default=0.0, description="Duration in seconds")
+    status: HarvestStatus = Field(default=HarvestStatus.DISCOVERED)
+    video_path: Optional[str] = Field(None, description="Local path to downloaded video/audio")
+    chat_path: Optional[str] = Field(None, description="Local path to downloaded chat JSON")
+    metadata_path: Optional[str] = Field(None, description="Local path to metadata JSON")
+    thumbnail_path: Optional[str] = Field(None, description="Local path to preview graphic")
+    file_size_bytes: int = Field(default=0, description="Total size in bytes on disk")
+    download_speed_mbps: float = Field(default=0.0, description="Recorded download throughput")
+    retry_count: int = Field(default=0, description="Number of retry attempts")
+    error_message: Optional[str] = Field(None, description="Last recorded error if failed")
+    harvested_at: Optional[datetime] = None
+    analyzed_at: Optional[datetime] = None
+    raw_metadata: Dict[str, Any] = Field(default_factory=dict, description="Original platform metadata")
+
+
+class HarvesterStatusReport(BaseModel):
+    active_workers: int = 0
+    max_workers: int = 3
+    queue_depth: int = 0
+    downloading_count: int = 0
+    harvested_count: int = 0
+    error_count: int = 0
+    free_disk_gb: float = 0.0
+    active_downloads: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+
 
 
 
