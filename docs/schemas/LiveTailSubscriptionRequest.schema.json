@@ -1,0 +1,43 @@
+{
+  "properties": {
+    "stream_id": {
+      "title": "Stream Id",
+      "type": "string"
+    },
+    "channel_name": {
+      "title": "Channel Name",
+      "type": "string"
+    },
+    "platform": {
+      "default": "twitch",
+      "title": "Platform",
+      "type": "string"
+    },
+    "include_chat": {
+      "default": true,
+      "title": "Include Chat",
+      "type": "boolean"
+    },
+    "include_bursts": {
+      "default": true,
+      "title": "Include Bursts",
+      "type": "boolean"
+    },
+    "include_telemetry": {
+      "default": true,
+      "title": "Include Telemetry",
+      "type": "boolean"
+    },
+    "replay_count": {
+      "default": 50,
+      "title": "Replay Count",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "stream_id",
+    "channel_name"
+  ],
+  "title": "LiveTailSubscriptionRequest",
+  "type": "object"
+}

@@ -87,6 +87,12 @@ class SchemaRegistry:
             "DaemonConfig",
             "DaemonJobRecord",
             "DaemonStatusReport",
+            "DashboardConfig",
+            "DashboardOverviewStats",
+            "ScrubberTimelinePayload",
+            "ShortStudioExportRequest",
+            "LiveTailSubscriptionRequest",
+            "LiveStreamActionResponse",
         ]:
 
             if hasattr(model_schemas, name):

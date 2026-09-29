@@ -1,0 +1,62 @@
+{
+  "properties": {
+    "candidate_id": {
+      "title": "Candidate Id",
+      "type": "string"
+    },
+    "vertical_width": {
+      "default": 1080,
+      "title": "Vertical Width",
+      "type": "integer"
+    },
+    "vertical_height": {
+      "default": 1920,
+      "title": "Vertical Height",
+      "type": "integer"
+    },
+    "subtitle_style": {
+      "default": "DYNAMIC_WORD_HIGHLIGHT",
+      "title": "Subtitle Style",
+      "type": "string"
+    },
+    "reaction_layout": {
+      "default": "SPLIT_CAM_GAME",
+      "title": "Reaction Layout",
+      "type": "string"
+    },
+    "render_full_video": {
+      "default": true,
+      "title": "Render Full Video",
+      "type": "boolean"
+    },
+    "auto_publish": {
+      "default": false,
+      "title": "Auto Publish",
+      "type": "boolean"
+    },
+    "target_platforms": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Target Platforms",
+      "type": "array"
+    },
+    "export_dir": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Export Dir"
+    }
+  },
+  "required": [
+    "candidate_id"
+  ],
+  "title": "ShortStudioExportRequest",
+  "type": "object"
+}

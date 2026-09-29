@@ -132,6 +132,9 @@ class AgentRpcDispatcher:
                 "error": {"code": -32603, "message": f"Internal error: {str(e)}"},
             }
 
+    # Alias for API consistency
+    dispatch = handle_request
+
     # -------------------------------------------------------------------------
     # Built-in RPC Handlers
     # -------------------------------------------------------------------------

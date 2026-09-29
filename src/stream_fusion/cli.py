@@ -2189,7 +2189,74 @@ def daemon_init_config(
     console.print(f"[bold green][OK] Created default daemon configuration at {output}[/bold green]")
 
 
+# --- Spec 27: Unified Web Dashboard & Real-Time Studio CLI ---
+dashboard_app = typer.Typer(
+    name="dashboard",
+    help="Unified Web Dashboard & Real-Time Studio (Spec 27)",
+    no_args_is_help=True,
+)
+app.add_typer(dashboard_app, name="dashboard")
+
+
+@dashboard_app.command(name="serve")
+def dashboard_serve(
+    host: str = typer.Option("0.0.0.0", "--host", "-h", help="Host address to bind server"),
+    port: int = typer.Option(8000, "--port", "-p", help="Port to bind server"),
+    reload: bool = typer.Option(False, "--reload", help="Enable uvicorn reload"),
+    homelab_root: Path = typer.Option(Path("./homelab_storage"), "--homelab-root", help="Root storage directory"),
+    db: str = typer.Option("sqlite:///homelab_storage/catalog.db", "--db", help="Catalog database connection URL"),
+    open_browser: bool = typer.Option(False, "--open", help="Open web dashboard in default browser"),
+):
+    """Starts the StreamFusion Studio web server."""
+    from stream_fusion.models.schemas import DashboardConfig
+    from stream_fusion.web.app import run_server
+
+    cfg = DashboardConfig(
+        host=host,
+        port=port,
+        reload=reload,
+        homelab_root=str(homelab_root),
+        catalog_db_url=db,
+    )
+    console.print(f"[bold purple]StreamFusion Studio[/bold purple]: Starting Web Dashboard on [cyan]http://{host}:{port}[/cyan]")
+    if open_browser:
+        import webbrowser
+        webbrowser.open(f"http://localhost:{port}")
+    run_server(cfg)
+
+
+@dashboard_app.command(name="status")
+def dashboard_status(
+    url: str = typer.Option("http://localhost:8000", "--url", help="Base URL of dashboard server"),
+):
+    """Checks the health and status of a running StreamFusion Studio instance."""
+    import requests
+
+    try:
+        res = requests.get(f"{url.rstrip('/')}/api/system/health", timeout=3.0)
+        if res.status_code == 200:
+            data = res.json()
+            console.print(f"[bold green][OK] StreamFusion Studio is ACTIVE[/bold green] (Uptime: {data.get('uptime_seconds')}s, Version: {data.get('version')})")
+        else:
+            console.print(f"[yellow]Server responded with HTTP {res.status_code}[/yellow]")
+    except Exception as e:
+        console.print(f"[bold red]StreamFusion Studio is not reachable at {url}:[/bold red] {e}")
+
+
+@dashboard_app.command(name="open")
+def dashboard_open(
+    port: int = typer.Option(8000, "--port", "-p", help="Port of running dashboard"),
+):
+    """Opens the StreamFusion Studio in the default web browser."""
+    import webbrowser
+
+    target_url = f"http://localhost:{port}"
+    console.print(f"[bold purple]Opening StreamFusion Studio in browser:[/bold purple] {target_url}")
+    webbrowser.open(target_url)
+
+
 if __name__ == "__main__":
+
 
     app()
 

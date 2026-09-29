@@ -821,8 +821,10 @@ class HarvestStatus(str, Enum):
     DOWNLOADING = "DOWNLOADING"
     HARVESTED = "HARVESTED"
     READY_FOR_ANALYSIS = "READY_FOR_ANALYSIS"
+    ANALYZING = "ANALYZING"
     ANALYZED = "ANALYZED"
     ERROR = "ERROR"
+    FAILED = "FAILED"
 
 
 class StreamerTargetRecord(BaseModel):
@@ -941,6 +943,85 @@ class DaemonStatusReport(BaseModel):
     free_disk_gb: float = 0.0
     recent_errors: List[str] = Field(default_factory=list)
     recent_jobs: List[DaemonJobRecord] = Field(default_factory=list)
+
+
+# --- Spec 27: Unified Web Dashboard & Real-Time Studio Schemas ---
+
+class DashboardConfig(BaseModel):
+    host: str = Field(default="0.0.0.0", description="Host address to bind dashboard server")
+    port: int = Field(default=8000, description="HTTP port to bind dashboard server")
+    reload: bool = Field(default=False, description="Enable auto-reload for development")
+    homelab_root: str = Field(default="./homelab_storage", description="Root storage directory for VODs and artifacts")
+    catalog_db_url: str = Field(default="sqlite:///homelab_storage/catalog.db", description="Catalog database URL")
+    enable_cors: bool = Field(default=True, description="Enable Cross-Origin Resource Sharing")
+    cors_origins: List[str] = Field(default_factory=lambda: ["*"], description="Allowed CORS origin list")
+    static_dir: Optional[str] = Field(default=None, description="Custom path to static frontend assets")
+    enable_auth: bool = Field(default=False, description="Enable basic API key header authentication")
+    api_key: Optional[str] = Field(default=None, description="API key when authentication is enabled")
+
+
+class DashboardOverviewStats(BaseModel):
+    streamer_count: int = 0
+    total_vods_count: int = 0
+    harvested_vods_count: int = 0
+    analyzed_vods_count: int = 0
+    queued_vods_count: int = 0
+    downloading_vods_count: int = 0
+    total_storage_bytes: int = 0
+    free_storage_gb: float = 0.0
+    daemon_state: str = "STOPPED"
+    daemon_pid: Optional[int] = None
+    active_live_streams: int = 0
+    total_shorts_count: int = 0
+    total_claims_count: int = 0
+    last_updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ScrubberTimelinePayload(BaseModel):
+    vod_id: str
+    title: str = ""
+    streamer_id: str = ""
+    duration_sec: float = 0.0
+    video_url: Optional[str] = None
+    slices_count: int = 0
+    scenes: List[Dict[str, Any]] = Field(default_factory=list)
+    speech_segments: List[Dict[str, Any]] = Field(default_factory=list)
+    chat_bursts: List[Dict[str, Any]] = Field(default_factory=list)
+    sponsors: List[Dict[str, Any]] = Field(default_factory=list)
+    claims: List[Dict[str, Any]] = Field(default_factory=list)
+    waveform: List[float] = Field(default_factory=list)
+    keyframes: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class ShortStudioExportRequest(BaseModel):
+    candidate_id: str
+    vertical_width: int = 1080
+    vertical_height: int = 1920
+    subtitle_style: str = "DYNAMIC_WORD_HIGHLIGHT"
+    reaction_layout: str = "SPLIT_CAM_GAME"
+    render_full_video: bool = True
+    auto_publish: bool = False
+    target_platforms: List[str] = Field(default_factory=lambda: ["youtube_shorts", "tiktok"])
+    export_dir: Optional[str] = None
+
+
+class LiveTailSubscriptionRequest(BaseModel):
+    stream_id: str
+    channel_name: str
+    platform: str = "twitch"
+    include_chat: bool = True
+    include_bursts: bool = True
+    include_telemetry: bool = True
+    replay_count: int = 50
+
+
+class LiveStreamActionResponse(BaseModel):
+    status: str = "OK"
+    action: str
+    target_id: Optional[str] = None
+    message: str = ""
+    details: Dict[str, Any] = Field(default_factory=dict)
+
 
 
 

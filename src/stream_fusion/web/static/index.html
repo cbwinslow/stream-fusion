@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StreamFusion Studio | Unified Dashboard</title>
+  <link rel="stylesheet" href="/static/css/studio.css">
+</head>
+<body>
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <div class="brand">
+      <div class="brand-icon">⚡</div>
+      <span class="brand-title">StreamFusion Studio</span>
+      <span class="brand-badge">Spec 27</span>
+    </div>
+
+    <nav class="nav-tabs">
+      <button class="tab-btn active" data-tab="tab-overview">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+        Homelab Overview
+      </button>
+      <button class="tab-btn" data-tab="tab-scrubber">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        Multimodal Scrubber
+      </button>
+      <button class="tab-btn" data-tab="tab-shorts">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+        Short Studio
+      </button>
+      <button class="tab-btn" data-tab="tab-knowledge">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+        Knowledge & Stances
+      </button>
+      <button class="tab-btn" data-tab="tab-live">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>
+        Live Tail Monitor
+      </button>
+    </nav>
+
+    <div class="top-telemetry">
+      <div class="status-pill">
+        <div id="ws-pulse" class="pulse-dot"></div>
+        <span id="ws-status-text">WS Connecting...</span>
+      </div>
+      <div class="status-pill">
+        <span>Daemon:</span>
+        <span id="daemon-state-badge" class="badge badge-yellow">CHECKING</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="container">
+    <!-- VIEW 1: Homelab & Harvester Overview -->
+    <section id="tab-overview" class="view-panel active">
+      <div class="grid-4" style="margin-bottom: 24px;">
+        <div class="card">
+          <div class="card-title">Tracked Streamers</div>
+          <div id="stat-streamers" class="stat-value">0</div>
+          <div class="stat-sub">Roster Channels Active</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Total VODs</div>
+          <div id="stat-vods" class="stat-value">0</div>
+          <div class="stat-sub">Harvest Catalog Records</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Analyzed VODs</div>
+          <div id="stat-analyzed" class="stat-value">0</div>
+          <div class="stat-sub">9-Phase Complete</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Free Storage</div>
+          <div id="stat-free-storage" class="stat-value">-- GB</div>
+          <div class="stat-sub">Homelab Storage Root</div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom: 24px;">
+        <!-- Daemon Control Center -->
+        <div class="card">
+          <div class="card-title">
+            <span>24/7 Scheduler Daemon Supervisor</span>
+          </div>
+          <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">
+            Autonomous homelab crawler, multi-threaded queue worker, and single-concurrency pipeline orchestrator.
+          </p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-success" onclick="daemonAction('start')">Start Daemon</button>
+            <button class="btn btn-secondary" onclick="daemonAction('pause')">Pause</button>
+            <button class="btn btn-secondary" onclick="daemonAction('resume')">Resume</button>
+            <button class="btn btn-danger" onclick="daemonAction('stop')">Stop</button>
+            <button class="btn" onclick="triggerCrawl()">Trigger Crawl</button>
+          </div>
+        </div>
+
+        <!-- Channel Crawl Actions -->
+        <div class="card">
+          <div class="card-title">
+            <span>Quick Ingestion & Storage</span>
+          </div>
+          <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">
+            Target streamer discovery sync and manual VOD ingestion trigger.
+          </p>
+          <div style="display:flex; gap:8px;">
+            <button class="btn" onclick="addStreamerPrompt()">+ Add Streamer to Roster</button>
+            <button class="btn btn-secondary" onclick="loadCatalog()">Refresh Catalog</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Streamer Roster Table -->
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="card-title">
+          <span>Target Streamer Roster</span>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Streamer</th>
+                <th>Platform</th>
+                <th>ID / Handle</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="roster-table-body">
+              <tr><td colspan="6" style="text-align:center; color:var(--text-muted);">Loading roster...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- VOD Catalog & Queue Table -->
+      <div class="card">
+        <div class="card-title">
+          <span>Harvested VODs & Pipeline Queue</span>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Title / VOD ID</th>
+                <th>Streamer</th>
+                <th>Status</th>
+                <th>Duration</th>
+                <th>File Size</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="catalog-table-body">
+              <tr><td colspan="6" style="text-align:center; color:var(--text-muted);">Loading catalog...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 2: Multimodal Scrubber & Stream Player -->
+    <section id="tab-scrubber" class="view-panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <label style="font-size:13px; color:var(--text-muted); font-weight:600;">ACTIVE VOD:</label>
+          <select id="player-vod-select" class="btn btn-secondary" onchange="loadVodTimeline(this.value)" style="padding:6px 12px; font-family:inherit;">
+            <option value="">No VODs Available</option>
+          </select>
+        </div>
+        <div style="font-family:var(--font-mono); font-size:14px; color:var(--accent-cyan);">
+          Time: <span id="current-time-display">0s</span>
+        </div>
+      </div>
+
+      <div class="player-container">
+        <!-- Left: Video Screen & Scrubber -->
+        <div>
+          <div class="video-screen">
+            <video id="main-video-player" controls preload="metadata">
+              <source src="" type="video/mp4">
+              Your browser does not support HTML5 video.
+            </video>
+          </div>
+
+          <!-- Multi-Track Scrubber -->
+          <div class="scrubber-strip">
+            <div style="font-size:11px; text-transform:uppercase; color:var(--text-muted); font-weight:600; margin-bottom:6px;">
+              Multimodal Timeline Strip (Bursts, Sponsors, Claims)
+            </div>
+            <div id="scrubber-interactive-track" class="timeline-track" onclick="seekTimeline(event)">
+              <div id="timeline-playhead" class="playhead" style="left: 0%;"></div>
+              <div id="timeline-markers-track"></div>
+            </div>
+
+            <div style="font-size:11px; text-transform:uppercase; color:var(--text-muted); font-weight:600; margin-top:10px; margin-bottom:4px;">
+              Audio Waveform & Prosody Density
+            </div>
+            <canvas id="waveform-canvas" class="waveform-canvas" width="800" height="48"></canvas>
+          </div>
+        </div>
+
+        <!-- Right: Synchronized Chat Waterfall Replay -->
+        <div class="chat-window">
+          <div class="chat-header">
+            <span>Synchronized Chat Replay</span>
+            <span class="badge badge-purple">LIVE SYNC</span>
+          </div>
+          <div id="player-chat-messages" class="chat-messages">
+            <div style="color:var(--text-muted); text-align:center; padding:20px;">Loading chat replay...</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: Autonomous Short Studio -->
+    <section id="tab-shorts" class="view-panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <label style="font-size:13px; color:var(--text-muted); font-weight:600;">SHORT CANDIDATE:</label>
+          <select id="short-candidate-select" class="btn btn-secondary" onchange="inspectShort(this.value)" style="padding:6px 12px; font-family:inherit;">
+            <option value="candidate_demo">Sample: Unbelievable Broadcast Moment (92.5/100)</option>
+          </select>
+        </div>
+        <button class="btn btn-success" onclick="renderShortCandidate()">
+          ⚡ Render & Export 9:16 Short
+        </button>
+      </div>
+
+      <div class="studio-layout">
+        <!-- 9:16 Vertical Phone Mockup Preview -->
+        <div class="phone-mockup">
+          <div class="phone-notch"></div>
+          <div style="font-size:12px; color:#cbd5e1; text-align:center; margin-top:20px;">
+            9:16 Vertical Preview Canvas
+          </div>
+          <div class="short-subtitle-preview">
+            "WAIT, DID HE <span class="highlight-word">ACTUALLY</span> JUST SAY THAT?!"
+          </div>
+        </div>
+
+        <!-- Candidate Virality Score & 3-Act Breakdown -->
+        <div>
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-title">Autonomous Virality Prediction</div>
+            <div class="grid-4">
+              <div>
+                <div class="stat-sub">Overall Score</div>
+                <div id="short-virality-score" class="stat-value" style="color:var(--accent-green);">92.5 / 100</div>
+              </div>
+              <div>
+                <div class="stat-sub">Hook Efficacy</div>
+                <div id="short-hook-score" class="stat-value">95%</div>
+              </div>
+              <div>
+                <div class="stat-sub">Meme Density</div>
+                <div id="short-meme-score" class="stat-value">88%</div>
+              </div>
+              <div>
+                <div class="stat-sub">Retention Pred.</div>
+                <div id="short-retention-score" class="stat-value">89%</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-title">Three-Act Editorial Script</div>
+            <div style="margin-bottom:12px;">
+              <strong style="color:var(--accent-cyan); font-size:12px; text-transform:uppercase;">1. The Hook (0-5s)</strong>
+              <p id="script-hook-text" style="font-size:14px; color:#fff; margin-top:4px;">Wait, did he actually just say that on live stream?!</p>
+            </div>
+            <div style="margin-bottom:12px;">
+              <strong style="color:var(--accent-yellow); font-size:12px; text-transform:uppercase;">2. The Build (5-22s)</strong>
+              <p id="script-build-text" style="font-size:14px; color:#fff; margin-top:4px;">Look at the chat moving at lightning speed right before the reaction.</p>
+            </div>
+            <div>
+              <strong style="color:var(--accent-purple); font-size:12px; text-transform:uppercase;">3. The Punchline (22-30s)</strong>
+              <p id="script-punchline-text" style="font-size:14px; color:#fff; margin-top:4px;">Absolute peak cinema.</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Camera Layout & Dynamic Subtitles</div>
+            <div class="grid-2">
+              <div>
+                <label style="font-size:12px; color:var(--text-muted); font-weight:600;">LAYOUT PRESET:</label>
+                <select class="btn btn-secondary" style="width:100%; margin-top:6px;">
+                  <option>SPLIT_CAM_GAME (Reaction Top / Game Bottom)</option>
+                  <option>DYNAMIC_FACE_TRACKING (Facecam Centered)</option>
+                  <option>MULTI_SPEAKER_DEBATE (Dual Side-by-Side)</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:12px; color:var(--text-muted); font-weight:600;">SUBTITLE ANIMATION:</label>
+                <select class="btn btn-secondary" style="width:100%; margin-top:6px;">
+                  <option>DYNAMIC_WORD_HIGHLIGHT (Karaoke Glow)</option>
+                  <option>TIKTOK_BOUNCE (Pop Animation)</option>
+                  <option>MINIMAL_CLEAN (Subtle Yellow)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 4: Knowledge & Stance Explorer -->
+    <section id="tab-knowledge" class="view-panel">
+      <!-- Entity Stance Timeline Cards -->
+      <div style="margin-bottom:24px;">
+        <div class="card-title" style="margin-bottom:12px;">Entity Stances & Polarity [-1.0, +1.0]</div>
+        <div id="stances-cards-container" class="grid-2"></div>
+      </div>
+
+      <!-- Fact-Checked Claims Table -->
+      <div class="card">
+        <div class="card-title">Extracted Streamer Claims & Web Grounding Fact-Checks</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Claim Statement</th>
+                <th>Streamer</th>
+                <th>Verdict</th>
+                <th>Confidence</th>
+                <th>Web Grounding Citation</th>
+              </tr>
+            </thead>
+            <tbody id="claims-table-body">
+              <tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Loading claims...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 5: Live Tail Monitor -->
+    <section id="tab-live" class="view-panel">
+      <div class="grid-4" style="margin-bottom:20px;">
+        <div class="card">
+          <div class="card-title">Live Streams</div>
+          <div id="live-active-count" class="stat-value">0</div>
+          <div class="stat-sub">Active Ingestion Pipelines</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Dynamic Burst Velocity</div>
+          <div class="progress-track" style="margin-top:14px;">
+            <div id="live-burst-meter" class="progress-fill" style="width: 25%;"></div>
+          </div>
+          <div id="live-burst-term" class="stat-sub">Chat velocity normal</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Video FPS</div>
+          <div class="stat-value" style="color:var(--accent-cyan);">60.0</div>
+          <div class="stat-sub">Zero Frames Dropped</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Latency Drift</div>
+          <div class="stat-value" style="color:var(--accent-green);">14ms</div>
+          <div class="stat-sub">Sub-Frame Calibrated</div>
+        </div>
+      </div>
+
+      <div class="chat-window" style="height: 520px;">
+        <div class="chat-header">
+          <span>Real-Time WebSocket IRC Live Stream Feed</span>
+          <span class="badge badge-green">STREAMING</span>
+        </div>
+        <div id="live-chat-waterfall" class="chat-messages">
+          <div style="color:var(--text-muted); text-align:center; padding:20px;">Awaiting live stream messages...</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/js/studio.js"></script>
+</body>
+</html>

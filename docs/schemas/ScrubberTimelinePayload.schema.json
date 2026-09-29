@@ -1,0 +1,100 @@
+{
+  "properties": {
+    "vod_id": {
+      "title": "Vod Id",
+      "type": "string"
+    },
+    "title": {
+      "default": "",
+      "title": "Title",
+      "type": "string"
+    },
+    "streamer_id": {
+      "default": "",
+      "title": "Streamer Id",
+      "type": "string"
+    },
+    "duration_sec": {
+      "default": 0.0,
+      "title": "Duration Sec",
+      "type": "number"
+    },
+    "video_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Video Url"
+    },
+    "slices_count": {
+      "default": 0,
+      "title": "Slices Count",
+      "type": "integer"
+    },
+    "scenes": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Scenes",
+      "type": "array"
+    },
+    "speech_segments": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Speech Segments",
+      "type": "array"
+    },
+    "chat_bursts": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Chat Bursts",
+      "type": "array"
+    },
+    "sponsors": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Sponsors",
+      "type": "array"
+    },
+    "claims": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Claims",
+      "type": "array"
+    },
+    "waveform": {
+      "items": {
+        "type": "number"
+      },
+      "title": "Waveform",
+      "type": "array"
+    },
+    "keyframes": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Keyframes",
+      "type": "array"
+    }
+  },
+  "required": [
+    "vod_id"
+  ],
+  "title": "ScrubberTimelinePayload",
+  "type": "object"
+}

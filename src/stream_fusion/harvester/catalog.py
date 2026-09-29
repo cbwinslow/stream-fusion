@@ -537,6 +537,7 @@ class HarvestCatalog:
         streamer_id: Optional[str] = None,
         status: Optional[Union[HarvestStatus, str]] = None,
         limit: Optional[int] = None,
+        offset: Optional[int] = None,
     ) -> List[HarvestedVodRecord]:
         """Lists harvested VODs with optional filtering by streamer and status."""
         conditions: List[str] = []
@@ -554,6 +555,8 @@ class HarvestCatalog:
         query = f"SELECT * FROM harvested_vods {where_clause} ORDER BY published_at DESC, vod_id DESC"
         if limit and limit > 0:
             query += f" LIMIT {int(limit)}"
+        if offset and offset > 0:
+            query += f" OFFSET {int(offset)}"
 
         records: List[HarvestedVodRecord] = []
         with self._get_connection() as conn:
@@ -656,7 +659,30 @@ class HarvestCatalog:
                     pass
                 self._mem_conn = None
 
+    def get_catalog_stats(self) -> Dict[str, Any]:
+        """Returns catalog summary statistics including status breakdown and total VOD count."""
+        counts = self.count_vods_by_status()
+        return {"status_counts": counts, "total_vods": sum(counts.values())}
+
+    def search_vods(
+        self, query: str, streamer_id: Optional[str] = None, limit: int = 50
+    ) -> List[HarvestedVodRecord]:
+        """Searches harvested VODs by matching query substring in title or vod_id."""
+        vods = self.list_vods(streamer_id=streamer_id)
+        q = query.lower()
+        return [v for v in vods if q in v.title.lower() or q in v.vod_id.lower()][:limit]
+
+    # Convenient aliases for schema and API consistency
+    upsert_streamer_target = add_target
+    get_streamer_target = get_target
+    list_streamer_targets = list_targets
+    delete_streamer_target = delete_target
+    upsert_harvested_vod = add_vod
+    get_harvested_vod = get_vod
+    list_harvested_vods = list_vods
+
     # --- Internal Row Helpers ---
+
 
     @staticmethod
     def _row_to_target(data: Dict[str, Any]) -> StreamerTargetRecord:

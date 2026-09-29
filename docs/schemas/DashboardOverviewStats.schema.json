@@ -1,0 +1,83 @@
+{
+  "properties": {
+    "streamer_count": {
+      "default": 0,
+      "title": "Streamer Count",
+      "type": "integer"
+    },
+    "total_vods_count": {
+      "default": 0,
+      "title": "Total Vods Count",
+      "type": "integer"
+    },
+    "harvested_vods_count": {
+      "default": 0,
+      "title": "Harvested Vods Count",
+      "type": "integer"
+    },
+    "analyzed_vods_count": {
+      "default": 0,
+      "title": "Analyzed Vods Count",
+      "type": "integer"
+    },
+    "queued_vods_count": {
+      "default": 0,
+      "title": "Queued Vods Count",
+      "type": "integer"
+    },
+    "downloading_vods_count": {
+      "default": 0,
+      "title": "Downloading Vods Count",
+      "type": "integer"
+    },
+    "total_storage_bytes": {
+      "default": 0,
+      "title": "Total Storage Bytes",
+      "type": "integer"
+    },
+    "free_storage_gb": {
+      "default": 0.0,
+      "title": "Free Storage Gb",
+      "type": "number"
+    },
+    "daemon_state": {
+      "default": "STOPPED",
+      "title": "Daemon State",
+      "type": "string"
+    },
+    "daemon_pid": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Daemon Pid"
+    },
+    "active_live_streams": {
+      "default": 0,
+      "title": "Active Live Streams",
+      "type": "integer"
+    },
+    "total_shorts_count": {
+      "default": 0,
+      "title": "Total Shorts Count",
+      "type": "integer"
+    },
+    "total_claims_count": {
+      "default": 0,
+      "title": "Total Claims Count",
+      "type": "integer"
+    },
+    "last_updated_at": {
+      "format": "date-time",
+      "title": "Last Updated At",
+      "type": "string"
+    }
+  },
+  "title": "DashboardOverviewStats",
+  "type": "object"
+}

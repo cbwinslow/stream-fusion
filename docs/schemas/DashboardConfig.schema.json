@@ -1,0 +1,82 @@
+{
+  "properties": {
+    "host": {
+      "default": "0.0.0.0",
+      "description": "Host address to bind dashboard server",
+      "title": "Host",
+      "type": "string"
+    },
+    "port": {
+      "default": 8000,
+      "description": "HTTP port to bind dashboard server",
+      "title": "Port",
+      "type": "integer"
+    },
+    "reload": {
+      "default": false,
+      "description": "Enable auto-reload for development",
+      "title": "Reload",
+      "type": "boolean"
+    },
+    "homelab_root": {
+      "default": "./homelab_storage",
+      "description": "Root storage directory for VODs and artifacts",
+      "title": "Homelab Root",
+      "type": "string"
+    },
+    "catalog_db_url": {
+      "default": "sqlite:///homelab_storage/catalog.db",
+      "description": "Catalog database URL",
+      "title": "Catalog Db Url",
+      "type": "string"
+    },
+    "enable_cors": {
+      "default": true,
+      "description": "Enable Cross-Origin Resource Sharing",
+      "title": "Enable Cors",
+      "type": "boolean"
+    },
+    "cors_origins": {
+      "description": "Allowed CORS origin list",
+      "items": {
+        "type": "string"
+      },
+      "title": "Cors Origins",
+      "type": "array"
+    },
+    "static_dir": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Custom path to static frontend assets",
+      "title": "Static Dir"
+    },
+    "enable_auth": {
+      "default": false,
+      "description": "Enable basic API key header authentication",
+      "title": "Enable Auth",
+      "type": "boolean"
+    },
+    "api_key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "API key when authentication is enabled",
+      "title": "Api Key"
+    }
+  },
+  "title": "DashboardConfig",
+  "type": "object"
+}

@@ -479,6 +479,15 @@ class HomelabDaemon:
             recent_jobs=recent_jobs_copy[-10:],
         )
 
+    # Aliases for API consistency
+    get_status_report = get_status
+    trigger_immediate_crawl = trigger_crawl
+
+    @property
+    def status(self) -> DaemonState:
+        """Returns the current DaemonState."""
+        return self.state
+
     # -------------------------------------------------------------------------
     # Internal Helpers
     # -------------------------------------------------------------------------
