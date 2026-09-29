@@ -1,0 +1,132 @@
+{
+  "properties": {
+    "streamer_id": {
+      "description": "Normalized slug (e.g. 'asmongold')",
+      "title": "Streamer Id",
+      "type": "string"
+    },
+    "display_name": {
+      "description": "Human-readable creator name (e.g. 'Asmongold')",
+      "title": "Display Name",
+      "type": "string"
+    },
+    "channel_urls": {
+      "description": "Platform channel URLs",
+      "items": {
+        "type": "string"
+      },
+      "title": "Channel Urls",
+      "type": "array"
+    },
+    "primary_platform": {
+      "default": "TWITCH",
+      "description": "'TWITCH', 'YOUTUBE', 'KICK'",
+      "title": "Primary Platform",
+      "type": "string"
+    },
+    "quality_preset": {
+      "default": "best",
+      "description": "'best', '1080p', '720p', 'audio_only'",
+      "title": "Quality Preset",
+      "type": "string"
+    },
+    "include_chat": {
+      "default": true,
+      "description": "Whether to fetch chat replay",
+      "title": "Include Chat",
+      "type": "boolean"
+    },
+    "max_recent_vods": {
+      "default": 5,
+      "description": "Max recent VODs to crawl per sync",
+      "title": "Max Recent Vods",
+      "type": "integer"
+    },
+    "lookback_days": {
+      "default": 14,
+      "description": "How far back to search in days",
+      "title": "Lookback Days",
+      "type": "integer"
+    },
+    "download_priority": {
+      "default": 5,
+      "description": "1 (lowest) to 10 (highest)",
+      "title": "Download Priority",
+      "type": "integer"
+    },
+    "destination_override": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Custom storage subpath",
+      "title": "Destination Override"
+    },
+    "tags": {
+      "description": "Categorization tags",
+      "items": {
+        "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+    },
+    "enabled": {
+      "default": true,
+      "description": "Whether actively crawled and downloaded",
+      "title": "Enabled",
+      "type": "boolean"
+    },
+    "created_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Created At"
+    },
+    "last_synced_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Last Synced At"
+    },
+    "voiceprint_embedding": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Pre-seeded voiceprint acoustic embedding",
+      "title": "Voiceprint Embedding"
+    }
+  },
+  "required": [
+    "streamer_id",
+    "display_name"
+  ],
+  "title": "StreamerTargetRecord",
+  "type": "object"
+}

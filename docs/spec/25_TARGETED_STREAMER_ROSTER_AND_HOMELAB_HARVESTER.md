@@ -1,6 +1,12 @@
 # Spec 25: Targeted Streamer Roster Ingestion & Homelab Harvester Pipeline
 
+**Status**: Complete & Verified (2026-09-29)  
+**Implementation Modules**: [`src/stream_fusion/harvester/`](file:///C:/Users/blain/Documents/stream-fusion/src/stream_fusion/harvester/) (`roster.py`, `catalog.py`, `crawler.py`, `engine.py`, `bridge.py`, `synergy.py`)  
+**Test Suite**: [`tests/test_homelab_harvester.py`](file:///C:/Users/blain/Documents/stream-fusion/tests/test_homelab_harvester.py) (15/15 passing, 187/187 overall test suite green)  
+**Registry Schemas**: `StreamerTargetRecord`, `HarvestedVodRecord`, `HarvesterStatusReport` exported to `docs/schemas/`  
+
 ## 1. Executive Summary & Objective
+
 
 StreamFusion's analytical engine (Specs 01–24) provides industry-grade multi-modal intelligence: speech transcription, voiceprint matching, Florence-2 visual comprehension, adaptive slang tracking, knowledge graph extraction, claim grounding, sponsor auditing, and autonomous 9:16 vertical short production.
 

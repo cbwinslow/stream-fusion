@@ -1,0 +1,49 @@
+{
+  "properties": {
+    "active_workers": {
+      "default": 0,
+      "title": "Active Workers",
+      "type": "integer"
+    },
+    "max_workers": {
+      "default": 3,
+      "title": "Max Workers",
+      "type": "integer"
+    },
+    "queue_depth": {
+      "default": 0,
+      "title": "Queue Depth",
+      "type": "integer"
+    },
+    "downloading_count": {
+      "default": 0,
+      "title": "Downloading Count",
+      "type": "integer"
+    },
+    "harvested_count": {
+      "default": 0,
+      "title": "Harvested Count",
+      "type": "integer"
+    },
+    "error_count": {
+      "default": 0,
+      "title": "Error Count",
+      "type": "integer"
+    },
+    "free_disk_gb": {
+      "default": 0.0,
+      "title": "Free Disk Gb",
+      "type": "number"
+    },
+    "active_downloads": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Active Downloads",
+      "type": "array"
+    }
+  },
+  "title": "HarvesterStatusReport",
+  "type": "object"
+}

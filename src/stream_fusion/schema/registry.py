@@ -81,7 +81,11 @@ class SchemaRegistry:
             "FullSpectrumStageSummary",
             "FullSpectrumConfig",
             "FullSpectrumManifest",
+            "StreamerTargetRecord",
+            "HarvestedVodRecord",
+            "HarvesterStatusReport",
         ]:
+
             if hasattr(model_schemas, name):
                 cls = getattr(model_schemas, name)
                 if isinstance(cls, type) and issubclass(cls, BaseModel):

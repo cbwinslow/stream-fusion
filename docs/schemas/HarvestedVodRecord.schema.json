@@ -1,0 +1,185 @@
+{
+  "$defs": {
+    "HarvestStatus": {
+      "enum": [
+        "DISCOVERED",
+        "QUEUED",
+        "DOWNLOADING",
+        "HARVESTED",
+        "READY_FOR_ANALYSIS",
+        "ANALYZED",
+        "ERROR"
+      ],
+      "title": "HarvestStatus",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "vod_id": {
+      "description": "Unique VOD identifier, e.g. 'twitch_v123456789'",
+      "title": "Vod Id",
+      "type": "string"
+    },
+    "streamer_id": {
+      "description": "Foreign key to streamer_targets.streamer_id",
+      "title": "Streamer Id",
+      "type": "string"
+    },
+    "platform": {
+      "description": "'TWITCH', 'YOUTUBE', 'KICK'",
+      "title": "Platform",
+      "type": "string"
+    },
+    "title": {
+      "default": "",
+      "description": "Stream or VOD title",
+      "title": "Title",
+      "type": "string"
+    },
+    "published_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Published At"
+    },
+    "duration_sec": {
+      "default": 0.0,
+      "description": "Duration in seconds",
+      "title": "Duration Sec",
+      "type": "number"
+    },
+    "status": {
+      "$ref": "#/$defs/HarvestStatus",
+      "default": "DISCOVERED"
+    },
+    "video_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Local path to downloaded video/audio",
+      "title": "Video Path"
+    },
+    "chat_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Local path to downloaded chat JSON",
+      "title": "Chat Path"
+    },
+    "metadata_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Local path to metadata JSON",
+      "title": "Metadata Path"
+    },
+    "thumbnail_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Local path to preview graphic",
+      "title": "Thumbnail Path"
+    },
+    "file_size_bytes": {
+      "default": 0,
+      "description": "Total size in bytes on disk",
+      "title": "File Size Bytes",
+      "type": "integer"
+    },
+    "download_speed_mbps": {
+      "default": 0.0,
+      "description": "Recorded download throughput",
+      "title": "Download Speed Mbps",
+      "type": "number"
+    },
+    "retry_count": {
+      "default": 0,
+      "description": "Number of retry attempts",
+      "title": "Retry Count",
+      "type": "integer"
+    },
+    "error_message": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Last recorded error if failed",
+      "title": "Error Message"
+    },
+    "harvested_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Harvested At"
+    },
+    "analyzed_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Analyzed At"
+    },
+    "raw_metadata": {
+      "additionalProperties": true,
+      "description": "Original platform metadata",
+      "title": "Raw Metadata",
+      "type": "object"
+    }
+  },
+  "required": [
+    "vod_id",
+    "streamer_id",
+    "platform"
+  ],
+  "title": "HarvestedVodRecord",
+  "type": "object"
+}
