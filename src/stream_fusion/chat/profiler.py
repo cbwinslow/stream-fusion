@@ -342,3 +342,8 @@ class BrigadeDetector:
                 cluster_idx += 1
 
         return clusters
+
+
+# Backward-compatibility alias
+ChatterProfiler = ChatterProfileStore
+

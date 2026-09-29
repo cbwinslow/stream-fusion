@@ -1,0 +1,88 @@
+{
+  "properties": {
+    "isolate_gpu_workers": {
+      "default": false,
+      "title": "Isolate Gpu Workers",
+      "type": "boolean"
+    },
+    "bounded_buffer": {
+      "default": true,
+      "title": "Bounded Buffer",
+      "type": "boolean"
+    },
+    "window_size_sec": {
+      "default": 30.0,
+      "title": "Window Size Sec",
+      "type": "number"
+    },
+    "sample_interval_sec": {
+      "default": 2.0,
+      "title": "Sample Interval Sec",
+      "type": "number"
+    },
+    "enable_adaptive_slang": {
+      "default": true,
+      "title": "Enable Adaptive Slang",
+      "type": "boolean"
+    },
+    "enable_web_grounding": {
+      "default": true,
+      "title": "Enable Web Grounding",
+      "type": "boolean"
+    },
+    "enable_stance_tracking": {
+      "default": true,
+      "title": "Enable Stance Tracking",
+      "type": "boolean"
+    },
+    "enable_sponsor_quantifier": {
+      "default": true,
+      "title": "Enable Sponsor Quantifier",
+      "type": "boolean"
+    },
+    "enable_short_production": {
+      "default": true,
+      "title": "Enable Short Production",
+      "type": "boolean"
+    },
+    "short_candidate_count": {
+      "default": 3,
+      "title": "Short Candidate Count",
+      "type": "integer"
+    },
+    "dry_run_shorts": {
+      "default": false,
+      "title": "Dry Run Shorts",
+      "type": "boolean"
+    },
+    "auto_latency": {
+      "default": true,
+      "title": "Auto Latency",
+      "type": "boolean"
+    },
+    "manual_latency_offset": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Manual Latency Offset"
+    },
+    "stance_history_db": {
+      "default": "./stance_history.json",
+      "title": "Stance History Db",
+      "type": "string"
+    },
+    "adaptive_lexicon_db": {
+      "default": "./adaptive_lexicon.json",
+      "title": "Adaptive Lexicon Db",
+      "type": "string"
+    }
+  },
+  "title": "FullSpectrumConfig",
+  "type": "object"
+}

@@ -51,6 +51,8 @@ class AgentRpcDispatcher:
         self.register_handler("streamfusion.stopCoStream", self._handle_stop_costream)
         self.register_handler("streamfusion.alignCoStreams", self._handle_align_costreams)
         self.register_handler("streamfusion.compareCrossAudience", self._handle_compare_cross_audience)
+        self.register_handler("streamfusion.runFullSpectrum", self._handle_run_full_spectrum)
+        self.register_handler("streamfusion.getFullSpectrumManifest", self._handle_get_full_spectrum_manifest)
 
     def register_handler(
         self, method: str, handler: Callable[[Dict[str, Any]], Any]
@@ -515,6 +517,42 @@ class AgentRpcDispatcher:
             "timeline": [p.model_dump(mode="json") for p in timeline],
             "summary": summary,
         }
+
+    def _handle_run_full_spectrum(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        from stream_fusion.models.schemas import FullSpectrumConfig
+        from stream_fusion.orchestration.full_spectrum import FullSpectrumPipeline
+
+        media_path = Path(params.get("media_input", ""))
+        chat_path = Path(params.get("chat_input", "")) if params.get("chat_input") else None
+        out_dir = Path(params.get("output_dir", "./output"))
+        duration = float(params.get("duration_sec")) if params.get("duration_sec") is not None else None
+
+        cfg_dict = params.get("config", {})
+        config = FullSpectrumConfig(**cfg_dict)
+
+        pipeline = FullSpectrumPipeline(config=config)
+        analysis, manifest = pipeline.run(
+            media_input=media_path,
+            chat_input=chat_path,
+            output_dir=out_dir,
+            duration_sec=duration,
+        )
+
+        return {
+            "manifest": manifest.model_dump(mode="json"),
+            "analysis_id": analysis.stream_id,
+            "status": "COMPLETED",
+        }
+
+    def _handle_get_full_spectrum_manifest(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        manifest_path = Path(params.get("manifest_path", ""))
+        if not manifest_path.exists():
+            raise ValueError(f"Manifest path not found: {manifest_path}")
+
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data
+
 
 
 

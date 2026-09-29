@@ -1655,6 +1655,109 @@ def costream_start(
     asyncio.run(_run())
 
 
+# --- Spec 24: Full-Spectrum Synergy CLI ---
+
+@app.command(name="full-spectrum")
+def full_spectrum_cmd(
+    media: Path = typer.Argument(..., help="Path to input VOD video or audio file"),
+    chat: Optional[Path] = typer.Option(None, "--chat", "-c", help="Path to Twitch or YouTube chat replay JSON"),
+    output_dir: Path = typer.Option(Path("./output"), "--out", "-o", help="Output directory for all artifacts"),
+    duration: Optional[float] = typer.Option(None, "--duration", "-d", help="Limit analysis to N seconds"),
+    start_time: Optional[float] = typer.Option(None, "--start", "-s", help="Start time offset in seconds"),
+    shorts: int = typer.Option(3, "--shorts", "-k", help="Number of vertical shorts to produce"),
+    dry_run_shorts: bool = typer.Option(False, "--dry-run-shorts", help="Stage shorts packages without rendering video"),
+    isolate_workers: bool = typer.Option(False, "--isolate-workers", help="Run Whisper and Florence in isolated subprocesses"),
+    bounded_buffer: bool = typer.Option(True, "--bounded-buffer/--no-bounded-buffer", help="Process keyframes in sliding window buffers"),
+    ground_claims: bool = typer.Option(True, "--ground-claims/--no-ground-claims", help="Fact-check extracted claims against web sources"),
+    update_slang: bool = typer.Option(True, "--update-slang/--no-update-slang", help="Extract bursts and update adaptive slang lexicon"),
+    sponsor: bool = typer.Option(True, "--sponsor/--no-sponsor", help="Quantify sponsor brand mentions and engagement"),
+):
+    """Execute complete unified 9-phase multimodal synergy pipeline in a single command."""
+    from stream_fusion.models.schemas import FullSpectrumConfig
+    from stream_fusion.orchestration.full_spectrum import FullSpectrumPipeline
+
+    cfg = FullSpectrumConfig(
+        isolate_gpu_workers=isolate_workers,
+        bounded_buffer=bounded_buffer,
+        enable_adaptive_slang=update_slang,
+        enable_web_grounding=ground_claims,
+        enable_stance_tracking=True,
+        enable_sponsor_quantifier=sponsor,
+        enable_short_production=True,
+        short_candidate_count=shorts,
+        dry_run_shorts=dry_run_shorts,
+    )
+
+    pipeline = FullSpectrumPipeline(config=cfg)
+    analysis, manifest = pipeline.run(
+        media_input=media,
+        chat_input=chat,
+        output_dir=output_dir,
+        duration_sec=duration,
+        start_time_sec=start_time,
+    )
+
+    # Print summary report table
+    table = Table(title=f"🚀 Full-Spectrum Synergy Manifest: {manifest.stream_id}")
+    table.add_column("Stage", style="bold cyan")
+    table.add_column("Status", justify="center")
+    table.add_column("Duration", justify="right")
+    table.add_column("Summary", style="white")
+
+    for stage_name, stg in manifest.stages.items():
+        st_color = "green" if stg.status == "SUCCESS" else ("yellow" if stg.status in ("DEGRADED", "SKIPPED") else "red")
+        table.add_row(
+            stage_name,
+            f"[{st_color}]{stg.status}[/]",
+            f"{stg.duration_sec:.2f}s",
+            stg.output_summary or (stg.error_message or ""),
+        )
+
+    console.print(table)
+
+    metrics_table = Table(title="📊 Multimodal Intelligence Yield")
+    metrics_table.add_column("Metric", style="bold")
+    metrics_table.add_column("Yield", justify="right", style="cyan")
+    metrics_table.add_row("Total Media Duration", f"{manifest.effective_media_duration_sec:.1f}s")
+    metrics_table.add_row("Audio Segments", str(manifest.total_audio_segments))
+    metrics_table.add_row("Visual Keyframes", str(manifest.total_keyframes))
+    metrics_table.add_row("Chat Messages", str(manifest.total_chat_messages))
+    metrics_table.add_row("Multimodal Fusion Slices", str(manifest.total_fusion_slices))
+    metrics_table.add_row("Take Agreement Mean", f"{manifest.take_agreement_mean:+.2f}")
+    metrics_table.add_row("Slang Terms Updated", str(manifest.slang_terms_updated))
+    metrics_table.add_row("Claims Extracted / Grounded", f"{manifest.claims_extracted_count} / {manifest.grounded_claims_count}")
+    metrics_table.add_row("Stance Shifts Recorded", str(manifest.stance_shifts_count))
+    metrics_table.add_row("Brand Sponsor Moments", str(manifest.sponsor_mentions_count))
+    metrics_table.add_row("9:16 Shorts Produced", str(manifest.shorts_produced_count))
+    console.print(metrics_table)
+
+
+@app.command(name="run-all")
+def run_all_cmd(
+    media: Path = typer.Argument(..., help="Path to input VOD video or audio file"),
+    chat: Optional[Path] = typer.Option(None, "--chat", "-c", help="Path to Twitch or YouTube chat replay JSON"),
+    output_dir: Path = typer.Option(Path("./output"), "--out", "-o", help="Output directory for all artifacts"),
+    duration: Optional[float] = typer.Option(None, "--duration", "-d", help="Limit analysis to N seconds"),
+    shorts: int = typer.Option(3, "--shorts", "-k", help="Number of vertical shorts to produce"),
+    dry_run_shorts: bool = typer.Option(False, "--dry-run-shorts", help="Stage shorts packages without rendering video"),
+):
+    """Convenience alias for 'streamfusion full-spectrum'."""
+    full_spectrum_cmd(
+        media=media,
+        chat=chat,
+        output_dir=output_dir,
+        duration=duration,
+        start_time=None,
+        shorts=shorts,
+        dry_run_shorts=dry_run_shorts,
+        isolate_workers=False,
+        bounded_buffer=True,
+        ground_claims=True,
+        update_slang=True,
+        sponsor=True,
+    )
+
+
 if __name__ == "__main__":
     app()
 

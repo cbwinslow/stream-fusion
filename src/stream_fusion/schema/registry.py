@@ -78,6 +78,9 @@ class SchemaRegistry:
             "CrossStreamBurstPropagation",
             "CoStreamDebateTurn",
             "MultiAngleShortCandidate",
+            "FullSpectrumStageSummary",
+            "FullSpectrumConfig",
+            "FullSpectrumManifest",
         ]:
             if hasattr(model_schemas, name):
                 cls = getattr(model_schemas, name)

@@ -5,7 +5,9 @@ isolates sponsor segments, and quantifies audience attention, sentiment delta, a
 """
 
 import re
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
+
+from pydantic import BaseModel, Field
 
 from stream_fusion.chat.analyzer import EMOTE_POLARITY_LEXICON
 from stream_fusion.models.schemas import (
@@ -249,3 +251,100 @@ class SponsorReportGenerator:
             brand_attention_score=attention_score,
             summary=summary,
         )
+
+
+class SponsorAnalysisResult(BaseModel):
+    stream_id: str
+    sponsor_segments: List[SponsorSegment] = Field(default_factory=list)
+    reports: List[SponsorImpactReport] = Field(default_factory=list)
+
+
+class SponsorImpactQuantifier:
+    """High-level quantifier scanning for brand profiles and generating impact reports."""
+
+    DEFAULT_BRANDS = [
+        BrandProfile(
+            brand_id="starforge_systems",
+            brand_name="Starforge Systems",
+            aliases=["starforge", "star forge"],
+            promo_codes=["ASMON", "STREAMFUSION"],
+            product_keywords=["pc", "computer", "rig", "gpu"],
+        ),
+        BrandProfile(
+            brand_id="nordvpn",
+            brand_name="NordVPN",
+            aliases=["nord", "nord vpn"],
+            promo_codes=["DISCOUNT", "PRIVACY"],
+            product_keywords=["vpn", "security", "encryption"],
+        ),
+        BrandProfile(
+            brand_id="expressvpn",
+            brand_name="ExpressVPN",
+            aliases=["express vpn"],
+            promo_codes=["EXPRESS"],
+            product_keywords=["vpn", "streaming"],
+        ),
+        BrandProfile(
+            brand_id="manscaped",
+            brand_name="Manscaped",
+            aliases=["lawnmower"],
+            promo_codes=["BALLS", "MAN"],
+            product_keywords=["grooming", "trimmer"],
+        ),
+        BrandProfile(
+            brand_id="gamersupps",
+            brand_name="Gamer Supps",
+            aliases=["ggsupps", "gamersupps"],
+            promo_codes=["CREATOR"],
+            product_keywords=["energy", "caffeine", "waifu"],
+        ),
+    ]
+
+    def __init__(
+        self,
+        brands: Optional[List[BrandProfile]] = None,
+        merge_threshold_sec: float = 30.0,
+        window_buffer_sec: float = 60.0,
+    ):
+        self.detector = SponsorDetector(merge_threshold_sec=merge_threshold_sec)
+        self.reporter = SponsorReportGenerator(window_buffer_sec=window_buffer_sec)
+        self.brands = brands or self.DEFAULT_BRANDS
+
+    def analyze_sponsors(
+        self,
+        stream_id: str,
+        audio_segments: Optional[List[AudioSegment]] = None,
+        keyframes: Optional[List[VisualKeyframe]] = None,
+        chat_buckets: Optional[List[Any]] = None,
+        chat_messages: Optional[List[ChatMessage]] = None,
+        brand_profiles: Optional[List[BrandProfile]] = None,
+    ) -> SponsorAnalysisResult:
+        """Scans stream for brand profiles, extracts sponsor segments and evaluates impact."""
+        brands_to_check = brand_profiles or self.brands
+        all_segments: List[SponsorSegment] = []
+        all_reports: List[SponsorImpactReport] = []
+
+        messages = chat_messages or []
+
+        for brand in brands_to_check:
+            segments = self.detector.detect_segments(
+                brand=brand,
+                audio_segments=audio_segments,
+                keyframes=keyframes,
+            )
+            for seg in segments:
+                all_segments.append(seg)
+                if messages:
+                    report = self.reporter.generate_report(
+                        brand=brand,
+                        segment=seg,
+                        all_chat_messages=messages,
+                    )
+                    all_reports.append(report)
+
+        return SponsorAnalysisResult(
+            stream_id=stream_id,
+            sponsor_segments=all_segments,
+            reports=all_reports,
+        )
+

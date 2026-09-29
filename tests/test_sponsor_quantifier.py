@@ -117,3 +117,32 @@ def test_sponsor_report_generator(sample_brand):
     assert report.backlash_index > 0.0
     assert 0.0 <= report.brand_attention_score <= 100.0
     assert "Starforge Systems" in report.summary
+
+
+def test_sponsor_impact_quantifier_high_level(sample_brand):
+    from stream_fusion.analytics.sponsor_quantifier import SponsorImpactQuantifier
+
+    quantifier = SponsorImpactQuantifier(brands=[sample_brand])
+    audio = [
+        AudioSegment(
+            segment_id=1,
+            start_sec=10.0,
+            end_sec=15.0,
+            speaker_label="STREAMER",
+            transcript="Check out Starforge Systems rigs!",
+        )
+    ]
+    chat = [
+        ChatMessage(message_id="c1", timestamp_offset=12.0, user_id="u1", author_name="a1", content="Starforge W PC"),
+    ]
+
+    result = quantifier.analyze_sponsors(
+        stream_id="test_stream",
+        audio_segments=audio,
+        chat_messages=chat,
+    )
+    assert len(result.sponsor_segments) == 1
+    assert len(result.reports) == 1
+    assert result.reports[0].brand_id == "starforge_systems"
+    assert result.reports[0].chat_mention_count == 1
+

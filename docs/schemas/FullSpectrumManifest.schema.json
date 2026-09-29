@@ -1,0 +1,167 @@
+{
+  "$defs": {
+    "FullSpectrumStageSummary": {
+      "properties": {
+        "stage_name": {
+          "title": "Stage Name",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/StageExecutionStatus",
+          "default": "SUCCESS"
+        },
+        "duration_sec": {
+          "default": 0.0,
+          "title": "Duration Sec",
+          "type": "number"
+        },
+        "output_summary": {
+          "default": "",
+          "title": "Output Summary",
+          "type": "string"
+        },
+        "error_message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Message"
+        }
+      },
+      "required": [
+        "stage_name"
+      ],
+      "title": "FullSpectrumStageSummary",
+      "type": "object"
+    },
+    "StageExecutionStatus": {
+      "enum": [
+        "SUCCESS",
+        "SKIPPED",
+        "DEGRADED",
+        "FAILED"
+      ],
+      "title": "StageExecutionStatus",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "manifest_id": {
+      "title": "Manifest Id",
+      "type": "string"
+    },
+    "stream_id": {
+      "title": "Stream Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "total_pipeline_duration_sec": {
+      "default": 0.0,
+      "title": "Total Pipeline Duration Sec",
+      "type": "number"
+    },
+    "effective_media_duration_sec": {
+      "default": 0.0,
+      "title": "Effective Media Duration Sec",
+      "type": "number"
+    },
+    "stages": {
+      "additionalProperties": {
+        "$ref": "#/$defs/FullSpectrumStageSummary"
+      },
+      "title": "Stages",
+      "type": "object"
+    },
+    "total_audio_segments": {
+      "default": 0,
+      "title": "Total Audio Segments",
+      "type": "integer"
+    },
+    "total_keyframes": {
+      "default": 0,
+      "title": "Total Keyframes",
+      "type": "integer"
+    },
+    "total_chat_messages": {
+      "default": 0,
+      "title": "Total Chat Messages",
+      "type": "integer"
+    },
+    "total_fusion_slices": {
+      "default": 0,
+      "title": "Total Fusion Slices",
+      "type": "integer"
+    },
+    "calibrated_broadcast_delay_sec": {
+      "default": 0.0,
+      "title": "Calibrated Broadcast Delay Sec",
+      "type": "number"
+    },
+    "take_agreement_mean": {
+      "default": 0.0,
+      "title": "Take Agreement Mean",
+      "type": "number"
+    },
+    "slang_terms_updated": {
+      "default": 0,
+      "title": "Slang Terms Updated",
+      "type": "integer"
+    },
+    "claims_extracted_count": {
+      "default": 0,
+      "title": "Claims Extracted Count",
+      "type": "integer"
+    },
+    "grounded_claims_count": {
+      "default": 0,
+      "title": "Grounded Claims Count",
+      "type": "integer"
+    },
+    "stance_shifts_count": {
+      "default": 0,
+      "title": "Stance Shifts Count",
+      "type": "integer"
+    },
+    "sponsor_mentions_count": {
+      "default": 0,
+      "title": "Sponsor Mentions Count",
+      "type": "integer"
+    },
+    "shorts_produced_count": {
+      "default": 0,
+      "title": "Shorts Produced Count",
+      "type": "integer"
+    },
+    "output_directory": {
+      "default": "",
+      "title": "Output Directory",
+      "type": "string"
+    },
+    "html_report_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Html Report Path"
+    }
+  },
+  "required": [
+    "stream_id"
+  ],
+  "title": "FullSpectrumManifest",
+  "type": "object"
+}

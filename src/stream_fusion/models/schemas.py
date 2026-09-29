@@ -104,9 +104,14 @@ class StreamAnalysisResult(BaseModel):
     stream_id: str
     title: Optional[str] = None
     duration_sec: float
-    total_chat_messages: int
+    total_chat_messages: int = 0
     slices: List[FusionSlice] = Field(default_factory=list)
     highlights: List[Dict[str, object]] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def fusion_slices(self) -> List[FusionSlice]:
+        return self.slices
 
 
 # --- Spec 08: Chat NLP & Community Intelligence ---
@@ -748,6 +753,65 @@ class MultiAngleShortCandidate(BaseModel):
     virality_score: float = 0.0
     title: str = ""
     hooks: List[str] = Field(default_factory=list)
+
+
+# --- Spec 24: Full-Spectrum Pipeline Unification & Master Synergy Orchestrator ---
+
+class StageExecutionStatus(str, Enum):
+    SUCCESS = "SUCCESS"
+    SKIPPED = "SKIPPED"
+    DEGRADED = "DEGRADED"
+    FAILED = "FAILED"
+
+
+class FullSpectrumStageSummary(BaseModel):
+    stage_name: str
+    status: StageExecutionStatus = StageExecutionStatus.SUCCESS
+    duration_sec: float = 0.0
+    output_summary: str = ""
+    error_message: Optional[str] = None
+
+
+class FullSpectrumConfig(BaseModel):
+    isolate_gpu_workers: bool = False
+    bounded_buffer: bool = True
+    window_size_sec: float = 30.0
+    sample_interval_sec: float = 2.0
+    enable_adaptive_slang: bool = True
+    enable_web_grounding: bool = True
+    enable_stance_tracking: bool = True
+    enable_sponsor_quantifier: bool = True
+    enable_short_production: bool = True
+    short_candidate_count: int = 3
+    dry_run_shorts: bool = False
+    auto_latency: bool = True
+    manual_latency_offset: Optional[float] = None
+    stance_history_db: str = "./stance_history.json"
+    adaptive_lexicon_db: str = "./adaptive_lexicon.json"
+
+
+class FullSpectrumManifest(BaseModel):
+    manifest_id: str = Field(default_factory=lambda: f"fsm-{uuid.uuid4().hex[:8]}")
+    stream_id: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    total_pipeline_duration_sec: float = 0.0
+    effective_media_duration_sec: float = 0.0
+    stages: Dict[str, FullSpectrumStageSummary] = Field(default_factory=dict)
+    total_audio_segments: int = 0
+    total_keyframes: int = 0
+    total_chat_messages: int = 0
+    total_fusion_slices: int = 0
+    calibrated_broadcast_delay_sec: float = 0.0
+    take_agreement_mean: float = 0.0
+    slang_terms_updated: int = 0
+    claims_extracted_count: int = 0
+    grounded_claims_count: int = 0
+    stance_shifts_count: int = 0
+    sponsor_mentions_count: int = 0
+    shorts_produced_count: int = 0
+    output_directory: str = ""
+    html_report_path: Optional[str] = None
+
 
 
 

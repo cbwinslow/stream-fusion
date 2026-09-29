@@ -195,6 +195,7 @@
       "type": "number"
     },
     "total_chat_messages": {
+      "default": 0,
       "title": "Total Chat Messages",
       "type": "integer"
     },
@@ -212,12 +213,16 @@
       },
       "title": "Highlights",
       "type": "array"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
     }
   },
   "required": [
     "stream_id",
-    "duration_sec",
-    "total_chat_messages"
+    "duration_sec"
   ],
   "title": "StreamAnalysisResult",
   "type": "object"

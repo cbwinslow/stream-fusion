@@ -1,0 +1,51 @@
+{
+  "$defs": {
+    "StageExecutionStatus": {
+      "enum": [
+        "SUCCESS",
+        "SKIPPED",
+        "DEGRADED",
+        "FAILED"
+      ],
+      "title": "StageExecutionStatus",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "stage_name": {
+      "title": "Stage Name",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/StageExecutionStatus",
+      "default": "SUCCESS"
+    },
+    "duration_sec": {
+      "default": 0.0,
+      "title": "Duration Sec",
+      "type": "number"
+    },
+    "output_summary": {
+      "default": "",
+      "title": "Output Summary",
+      "type": "string"
+    },
+    "error_message": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Error Message"
+    }
+  },
+  "required": [
+    "stage_name"
+  ],
+  "title": "FullSpectrumStageSummary",
+  "type": "object"
+}
