@@ -52,6 +52,7 @@ from stream_fusion.orchestration.manifest import FullSpectrumManifestBuilder
 from stream_fusion.production.orchestrator import ShortProductionOrchestrator
 from stream_fusion.schema.envelope import StreamEventType, StreamFusionEnvelope
 from stream_fusion.vision.processor import VisionProcessor
+from stream_fusion.vision.optimizer import AdaptiveFrameOptimizer
 from stream_fusion.workers.bounded_buffer import BoundedFrameBuffer
 from stream_fusion.workers.isolation import WorkerIsolationManager
 
@@ -220,6 +221,29 @@ class FullSpectrumPipeline:
                         vp.unload()
                         return res
 
+                optimal_timestamps = None
+                if getattr(self.config, "sampling_mode", "fixed") == "adaptive":
+                    early_chat = []
+                    if chat_input and chat_input.exists():
+                        try:
+                            early_chat = self.chat_analyzer.parse_twitch_downloader_json(chat_input)
+                        except Exception:
+                            pass
+                    opt_cfg = VisionConfig(
+                        sampling_mode="adaptive",
+                        sample_interval_sec=self.config.sample_interval_sec,
+                        min_interval_sec=getattr(self.config, "min_interval_sec", 0.5),
+                        max_interval_sec=getattr(self.config, "max_interval_sec", 5.0),
+                        burst_window_sec=getattr(self.config, "burst_window_sec", 12.0),
+                    )
+                    optimizer = AdaptiveFrameOptimizer(config=opt_cfg)
+                    optimal_timestamps = optimizer.compute_optimal_timestamps(
+                        duration_sec=effective_duration,
+                        chat_messages=early_chat,
+                        audio_segments=audio_segments,
+                    )
+                    console.print(f"      [bold purple][OPTIMIZER][/bold purple] Computed {len(optimal_timestamps)} adaptive frame timestamps (vs ~{int(effective_duration / self.config.sample_interval_sec) + 1} fixed)")
+
                 keyframes = buffer.process_stream_windowed(
                     media_path,
                     total_duration_sec=effective_duration,
@@ -227,6 +251,7 @@ class FullSpectrumPipeline:
                     window_size_sec=self.config.window_size_sec,
                     frame_processor=_frame_callback,
                     purge_on_complete=True,
+                    optimal_timestamps=optimal_timestamps,
                 )
             else:
                 vp = VisionProcessor(

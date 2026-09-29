@@ -22,6 +22,7 @@ from stream_fusion.checkpoint.manager import CheckpointManager
 from stream_fusion.monitoring.telemetry import TelemetryCollector
 from stream_fusion.workers.isolation import WorkerIsolationManager
 from stream_fusion.workers.bounded_buffer import BoundedFrameBuffer
+from stream_fusion.vision.optimizer import AdaptiveFrameOptimizer
 
 console = Console()
 
@@ -189,6 +190,22 @@ class StreamPipeline:
                         vp.unload()
                         return res
 
+                optimal_timestamps = None
+                if getattr(self.config.vision, "sampling_mode", "fixed") == "adaptive":
+                    early_chat = []
+                    if chat_input and chat_input.exists():
+                        try:
+                            early_chat = self.chat_analyzer.parse_twitch_downloader_json(chat_input)
+                        except Exception:
+                            pass
+                    optimizer = AdaptiveFrameOptimizer(config=self.config.vision)
+                    optimal_timestamps = optimizer.compute_optimal_timestamps(
+                        duration_sec=effective_duration,
+                        chat_messages=early_chat,
+                        audio_segments=audio_segments,
+                    )
+                    console.print(f"      [bold purple][OPTIMIZER][/bold purple] Computed {len(optimal_timestamps)} adaptive frame timestamps (vs ~{int(effective_duration / self.config.vision.sample_interval_sec) + 1} fixed)")
+
                 keyframes = buffer.process_stream_windowed(
                     media_input,
                     total_duration_sec=effective_duration,
@@ -196,6 +213,7 @@ class StreamPipeline:
                     window_size_sec=self.config.execution.window_size_sec,
                     frame_processor=_frame_callback,
                     purge_on_complete=True,
+                    optimal_timestamps=optimal_timestamps,
                 )
                 if checkpoint_mgr:
                     checkpoint_mgr.save_chunk_vision(c_idx, keyframes)
