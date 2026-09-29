@@ -40,14 +40,26 @@ StreamFusion separates 24/7 background harvesting and analytical ingestion from 
 
 | Service | Port | Protocol | Purpose |
 |---|---|---|---|
-| **PostgreSQL 17** | `5432` | TCP | Relational state, streamer roster, job leases (`FOR UPDATE SKIP LOCKED`) |
+| **PostgreSQL 17** | `5434` (or `5432` default) | TCP | Relational state, streamer roster, job leases (`FOR UPDATE SKIP LOCKED`) *(Cluster `17-main` uses `5434` when coexisting with `16-main` on `5432`)* |
 | **ClickHouse HTTP** | `8123` | HTTP | High-throughput batch chat ingestion & ASOF joins |
 | **ClickHouse Native** | `9000` | TCP | Native ClickHouse binary interface |
 | **Qdrant REST** | `6333` | HTTP | Vector index, Binary Quantization search & payload filtering |
 | **Qdrant gRPC** | `6334` | gRPC | High-performance binary vector streaming |
 | **StreamFusion API** | `8000` | HTTP/WS | StreamFusion Web Studio & REST API |
 
+> [!IMPORTANT]
+> **Strict Bare-Metal Priority**: Primary production services run natively bare-metal on the homelab host. Docker containers associated with other applications (e.g. Langfuse, Grafana, custom web apps) MUST NEVER be repurposed or touched. The included `docker-compose.yml` is provided strictly as a clean, portable reference stack for external users or isolated testing environments.
+
 ---
+
+## 3. Direct NIC / High-Speed Interconnect Topology
+
+When running heavy video processing and vector indexing between a GPU workstation and a homelab storage/database server, a dedicated point-to-point NIC link (e.g. 1 Gbps / 10 Gbps) provides maximum throughput without saturating the home LAN:
+
+- **Workstation Direct NIC (e.g., `wp2-eno2`)**: `192.168.10.2 / 24`
+- **Homelab Server Direct NIC**: `192.168.10.1 / 24`
+- **Storage Subsystem**: Dedicated partition with fluid multi-terabyte capacity (e.g. `/home/cbwinslow/workspace/streamfusion/vods`). Raw high-bitrate media files (1080p60 VODs, WAV tracks, demuxed keyframes) reside entirely on homelab storage, preserving 100% of local workstation SSD capacity.
+
 
 ## 3. Database Installation on Machine 1 (Debian / Ubuntu)
 

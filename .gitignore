@@ -53,6 +53,8 @@ audit.db
 *.db
 adaptive_lexicon.json
 benchmark_output/
+benchmark_cache/
+benchmark_production_run/
 
 # IDE & OS
 .vscode/
