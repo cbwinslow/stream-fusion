@@ -48,7 +48,23 @@ SUB_ATTRIBUTE_KEYWORDS: Dict[str, str] = {
 class ClaimExtractor:
     """Extracts structured claims, stances, and polarities from transcribed streamer audio."""
 
+    def extract_claims(
+        self,
+        audio_segments: Optional[List[AudioSegment]] = None,
+        keyframes: Optional[List[Any]] = None,
+        creator_id: str = "Streamer",
+        vod_id: str = "unknown_vod",
+    ) -> List[StreamerClaim]:
+        """Extracts claims across a list of audio segments."""
+        all_claims: List[StreamerClaim] = []
+        if audio_segments:
+            for seg in audio_segments:
+                claims = self.extract_claims_from_transcript(seg, creator_id=creator_id, vod_id=vod_id)
+                all_claims.extend(claims)
+        return all_claims
+
     def extract_claims_from_transcript(
+
         self,
         segment: AudioSegment,
         creator_id: str,
