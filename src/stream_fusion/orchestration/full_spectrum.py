@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 import json
 import logging
 from pathlib import Path
+import subprocess
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -28,11 +29,11 @@ from stream_fusion.audio.voiceprint import VoiceprintLibrary
 from stream_fusion.chat.analyzer import ChatAnalyzer
 from stream_fusion.chat.calibrator import LatencyCalibrator
 from stream_fusion.chat.profiler import ChatterProfiler
-from stream_fusion.config import StreamFusionConfig
+from stream_fusion.config import StreamFusionConfig, VisionConfig
 from stream_fusion.export.dataset import export_to_parquet, export_training_triples_jsonl
 from stream_fusion.export.html_report import export_html_report
 from stream_fusion.fusion.matrix import FusionEngine
-from stream_fusion.ingest.demuxer import MediaDemuxer
+from stream_fusion.ingest.demuxer import MediaDemuxer, find_ffprobe_binary
 from stream_fusion.ingest.downloader import StreamDownloader
 from stream_fusion.knowledge.claims import ClaimExtractor
 from stream_fusion.knowledge.temporal_stance import TemporalStanceShiftTracker
@@ -145,19 +146,40 @@ class FullSpectrumPipeline:
             )
 
             frames_dir = out_dir / f"{stream_id}_keyframes"
-            frames = self.demuxer.extract_frames_at_interval(
-                media_path,
-                frames_dir,
-                interval_sec=self.config.sample_interval_sec,
-                start_time_sec=start_time_sec,
-                duration_sec=duration_sec,
-            )
-            effective_duration = duration_sec or (len(frames) * self.config.sample_interval_sec)
+            if not self.config.bounded_buffer:
+                frames = self.demuxer.extract_frames_at_interval(
+                    media_path,
+                    frames_dir,
+                    interval_sec=self.config.sample_interval_sec,
+                    start_time_sec=start_time_sec,
+                    duration_sec=duration_sec,
+                )
+                effective_duration = duration_sec or (len(frames) * self.config.sample_interval_sec)
+                summary_str = f"Extracted 16kHz audio and {len(frames)} keyframe frames ({effective_duration:.1f}s)"
+            else:
+                frames = []
+                if duration_sec is not None:
+                    effective_duration = duration_sec
+                else:
+                    try:
+                        probe_cmd = [
+                            find_ffprobe_binary(),
+                            "-v", "error",
+                            "-show_entries", "format=duration",
+                            "-of", "default=noprint_wrappers=1:nokey=1",
+                            str(media_path),
+                        ]
+                        res = subprocess.run(probe_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                        effective_duration = float(res.stdout.strip()) if res.returncode == 0 else 0.0
+                    except Exception:
+                        effective_duration = 0.0
+                summary_str = f"Extracted 16kHz audio and initialized bounded stream ({effective_duration:.1f}s)"
+
             builder.record_stage(
                 "phase_1_demuxing",
                 StageExecutionStatus.SUCCESS,
                 duration_sec=time.time() - t0,
-                output_summary=f"Extracted 16kHz audio and {len(frames)} keyframe frames ({effective_duration:.1f}s)",
+                output_summary=summary_str,
             )
         except Exception as ex:
             builder.record_stage("phase_1_demuxing", StageExecutionStatus.FAILED, time.time() - t0, error_message=str(ex))
@@ -169,38 +191,57 @@ class FullSpectrumPipeline:
         t0 = time.time()
         try:
             console.print("[bold cyan][2/9][/bold cyan] Running Speech Transcription & Voice Diarization...")
-            if self.config.isolate_gpu_workers:
-                worker_mgr = WorkerIsolationManager()
-                trans_cfg = {
-                    "whisper_model": self.base_config.audio.whisper_model,
-                    "device": self.base_config.audio.device,
-                    "compute_type": self.base_config.audio.compute_type,
-                }
-                audio_segments = worker_mgr.transcribe_isolated(wav_path, config=trans_cfg)
-                diar_cfg = {
-                    "hf_token": self.base_config.audio.hf_token,
-                    "device": self.base_config.audio.device,
-                }
-                audio_segments = worker_mgr.diarize_isolated(wav_path, audio_segments, config=diar_cfg)
-            else:
-                transcriber = AudioTranscriber(
-                    model_size=self.base_config.audio.whisper_model,
-                    device=self.base_config.audio.device,
-                    compute_type=self.base_config.audio.compute_type,
-                )
+            audio_cache_file = out_dir / f"{stream_id}_audio_segments.json"
+            audio_segments = None
+            if audio_cache_file.exists():
                 try:
-                    audio_segments = transcriber.transcribe(wav_path)
-                finally:
-                    transcriber.unload()
+                    with open(audio_cache_file, "r", encoding="utf-8") as f:
+                        raw_data = json.load(f)
+                    audio_segments = [AudioSegment.model_validate(item) for item in raw_data]
+                    console.print(f"      [green][CACHE HIT][/green] Loaded {len(audio_segments)} audio segments from {audio_cache_file.name}")
+                except Exception as ex:
+                    logger.warning("Failed loading audio segments cache: %s", ex)
+                    audio_segments = None
 
-                diarizer = ReactionDiarizer(
-                    hf_token=self.base_config.audio.hf_token,
-                    device=self.base_config.audio.device,
-                )
+            if audio_segments is None:
+                if self.config.isolate_gpu_workers:
+                    worker_mgr = WorkerIsolationManager()
+                    trans_cfg = {
+                        "whisper_model": self.base_config.audio.whisper_model,
+                        "device": self.base_config.audio.device,
+                        "compute_type": self.base_config.audio.compute_type,
+                    }
+                    audio_segments = worker_mgr.transcribe_isolated(wav_path, config=trans_cfg)
+                    diar_cfg = {
+                        "hf_token": self.base_config.audio.hf_token,
+                        "device": self.base_config.audio.device,
+                    }
+                    audio_segments = worker_mgr.diarize_isolated(wav_path, audio_segments, config=diar_cfg)
+                else:
+                    transcriber = AudioTranscriber(
+                        model_size=self.base_config.audio.whisper_model,
+                        device=self.base_config.audio.device,
+                        compute_type=self.base_config.audio.compute_type,
+                    )
+                    try:
+                        audio_segments = transcriber.transcribe(wav_path)
+                    finally:
+                        transcriber.unload()
+
+                    diarizer = ReactionDiarizer(
+                        hf_token=self.base_config.audio.hf_token,
+                        device=self.base_config.audio.device,
+                    )
+                    try:
+                        audio_segments = diarizer.diarize_and_tag(audio_segments, wav_path)
+                    finally:
+                        diarizer.unload()
+
                 try:
-                    audio_segments = diarizer.diarize_and_tag(audio_segments, wav_path)
-                finally:
-                    diarizer.unload()
+                    with open(audio_cache_file, "w", encoding="utf-8") as f:
+                        json.dump([seg.model_dump() for seg in audio_segments], f)
+                except Exception as ex:
+                    logger.warning("Failed writing audio segments cache: %s", ex)
 
             builder.record_stage(
                 "phase_2_audio_diarization",

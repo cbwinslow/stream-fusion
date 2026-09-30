@@ -589,10 +589,11 @@ def test_pgvector_storage_sql_execution(monkeypatch):
     mock_psycopg2 = MagicMock()
     mock_psycopg2.connect.return_value = mock_conn
     monkeypatch.setattr("stream_fusion.knowledge.search.psycopg2", mock_psycopg2, raising=False)
-    monkeypatch.setattr("stream_fusion.knowledge.search.psycopg", None, raising=False)
+    monkeypatch.setattr("stream_fusion.knowledge.search.psycopg", mock_psycopg2, raising=False)
 
     import sys
     sys.modules["psycopg2"] = mock_psycopg2
+    sys.modules["psycopg"] = mock_psycopg2
 
     storage = PgVectorStorage("postgresql://testuser:testpass@localhost:5432/streamfusion", dim=128)
 
