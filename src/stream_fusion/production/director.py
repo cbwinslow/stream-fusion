@@ -9,6 +9,7 @@ import uuid
 from stream_fusion.models.schemas import (
     AudioSegment,
     ChatMessage,
+    DynamicMomentThresholds,
     FusionSlice,
     NarrativeArc,
     ShortCandidate,
@@ -30,51 +31,57 @@ class DirectorAgent:
         fusion_slices: Optional[List[FusionSlice]] = None,
         audio_segments: Optional[List[AudioSegment]] = None,
         chat_messages: Optional[List[ChatMessage]] = None,
-        top_k: int = 3,
+        top_k: Optional[int] = 3,
         min_highlight_score: float = 0.4,
+        dynamic: bool = False,
+        thresholds: Optional[DynamicMomentThresholds] = None,
     ) -> List[ShortCandidate]:
-        """Scans highlight moments and fusion slices to curate top vertical short candidates."""
+        """Scans highlight moments and fusion slices to curate vertical short candidates."""
         candidates: List[ShortCandidate] = []
         fusion_slices = fusion_slices or getattr(analysis, "slices", []) or getattr(analysis, "fusion_slices", [])
         audio_segments = audio_segments or getattr(analysis, "audio_segments", [])
         chat_messages = chat_messages or getattr(analysis, "chat_messages", [])
+
+        effective_min_score = (thresholds.min_highlight_score if (dynamic and thresholds) else min_highlight_score)
+        min_separation = (thresholds.min_separation_sec if (dynamic and thresholds) else (60.0 if dynamic else 20.0))
+        safety_max = (thresholds.safety_max_shorts if (dynamic and thresholds) else (50 if dynamic else (top_k or 3)))
 
         # Identify candidate anchor timestamps from highlights or fusion slices
         anchor_points: List[Dict[str, float]] = []
 
         if analysis.highlights:
             for hl in analysis.highlights:
-                # Handle either dict or object
                 if isinstance(hl, dict):
                     ts = hl.get("timestamp_sec", 0.0)
                     score = hl.get("score", 0.5)
                 else:
                     ts = getattr(hl, "timestamp_sec", 0.0)
                     score = getattr(hl, "score", 0.5)
-                if score >= min_highlight_score:
+                if score >= effective_min_score:
                     anchor_points.append({"timestamp_sec": float(ts), "score": float(score)})
 
-        # If highlights are scarce, fall back to high-agreement fusion slices
-        if not anchor_points and fusion_slices:
+        # Scan fusion slices for high highlight scores or significant activity
+        if fusion_slices:
             for s in fusion_slices:
                 s_ts = getattr(s, "timestamp_sec", None)
                 if s_ts is None and hasattr(s, "start_sec"):
                     s_ts = (s.start_sec + s.end_sec) / 2.0
                 s_ts = float(s_ts or 0.0)
                 hl_score = getattr(s, "highlight_score", None) or getattr(s, "agreement_score", 0.0) or 0.0
-                if hl_score >= min_highlight_score:
+                if hl_score >= effective_min_score:
                     anchor_points.append({
                         "timestamp_sec": s_ts,
                         "score": float(hl_score),
                     })
 
-        # If still none, pick peaks of chat density
+        # If still none and not dynamic, fall back to peaks of chat density
         if not anchor_points and fusion_slices:
             def _get_slice_density(x):
                 return getattr(x, "chat_density", None) or getattr(x, "chat_velocity_per_sec", None) or float(getattr(x, "chat_message_count", 0))
 
             sorted_slices = sorted(fusion_slices, key=_get_slice_density, reverse=True)
-            for s in sorted_slices[:top_k]:
+            candidate_limit = top_k if (not dynamic and top_k) else 5
+            for s in sorted_slices[:candidate_limit]:
                 s_ts = getattr(s, "timestamp_sec", None)
                 if s_ts is None and hasattr(s, "start_sec"):
                     s_ts = (s.start_sec + s.end_sec) / 2.0
@@ -84,21 +91,23 @@ class DirectorAgent:
                     "timestamp_sec": s_ts,
                     "score": float(score),
                 })
-                anchor_points.append({
-                    "timestamp_sec": float(s.timestamp_sec),
-                    "score": float(getattr(s, "highlight_score", 0.5)),
-                })
 
-        # Deduplicate anchor points within 20 seconds of each other
+        # Deduplicate anchor points within minimum separation window
         deduped_anchors: List[Dict[str, float]] = []
         for ap in sorted(anchor_points, key=lambda x: x["score"], reverse=True):
-            if not any(abs(ap["timestamp_sec"] - d["timestamp_sec"]) < 20.0 for d in deduped_anchors):
+            if not any(abs(ap["timestamp_sec"] - d["timestamp_sec"]) < min_separation for d in deduped_anchors):
                 deduped_anchors.append(ap)
-            if len(deduped_anchors) >= top_k * 2:
+            if not dynamic and top_k and len(deduped_anchors) >= top_k * 2:
+                break
+            if dynamic and safety_max and len(deduped_anchors) >= safety_max:
                 break
 
         # Process each anchor into a ShortCandidate
-        for anchor in deduped_anchors[:top_k]:
+        selected_anchors = deduped_anchors if dynamic else (deduped_anchors[:top_k] if top_k else deduped_anchors)
+        if dynamic and safety_max:
+            selected_anchors = selected_anchors[:safety_max]
+
+        for anchor in selected_anchors:
             peak_ts = anchor["timestamp_sec"]
             score = anchor["score"]
 

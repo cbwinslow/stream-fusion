@@ -793,6 +793,27 @@ class FullSpectrumConfig(BaseModel):
     stance_history_db: str = "./stance_history.json"
     adaptive_lexicon_db: str = "./adaptive_lexicon.json"
 
+    # Spec 31: Dynamic Moment Discovery
+    dynamic_shorts: bool = True
+    short_min_highlight_score: float = 0.65
+    short_chat_burst_zscore: float = 2.5
+    short_min_separation_sec: float = 60.0
+    short_safety_max: Optional[int] = 50
+
+    # Spec 32: Storage Guardian & Archival Compression
+    enable_storage_guardian: bool = True
+    storage_budget_gb: float = 1500.0
+    min_free_disk_gb: float = 50.0
+    storage_overflow_policy: str = "halt"  # "halt" | "offload_gdrive" | "prune_oldest"
+    enable_archival_compression: bool = True
+    archival_target_height: int = 480
+    archival_target_fps: int = 24
+    archival_video_bitrate_kbps: int = 350
+    archival_audio_bitrate_kbps: int = 64
+    replace_source_after_transcode: bool = True
+    enable_gdrive_offload: bool = False
+    gdrive_root_folder_id: Optional[str] = None
+
 
 class FullSpectrumManifest(BaseModel):
     manifest_id: str = Field(default_factory=lambda: f"fsm-{uuid.uuid4().hex[:8]}")
@@ -815,6 +836,9 @@ class FullSpectrumManifest(BaseModel):
     shorts_produced_count: int = 0
     output_directory: str = ""
     html_report_path: Optional[str] = None
+    archival_proxy_path: Optional[str] = None
+    archival_reduction_pct: float = 0.0
+    storage_report: Optional[Dict[str, Any]] = None
 
 
 # --- Spec 25: Targeted Streamer Roster Ingestion & Homelab Harvester Pipeline ---
@@ -1153,5 +1177,93 @@ class ProductionBenchmarkReport(BaseModel):
     burst_zone_coverage_pct: float = 100.0
     peak_ram_mb: float = 0.0
     peak_vram_mb: float = 0.0
+
+
+# --- Spec 31: Dynamic Moment Discovery & Significance-Gated Short Production ---
+
+class DynamicMomentThresholds(BaseModel):
+    min_highlight_score: float = 0.65
+    chat_burst_zscore: float = 2.5
+    min_separation_sec: float = 60.0
+    min_duration_sec: float = 20.0
+    max_duration_sec: float = 60.0
+    safety_max_shorts: Optional[int] = 50
+    require_speech: bool = True
+
+
+# --- Spec 32: Storage Guardian, Archival Compression & Cloud Drive Offloader ---
+
+class StorageOverflowPolicy(str, Enum):
+    HALT = "halt"
+    OFFLOAD_GDRIVE = "offload_gdrive"
+    PRUNE_OLDEST = "prune_oldest"
+
+
+class StorageReport(BaseModel):
+    storage_root: str
+    total_used_bytes: int = 0
+    budget_bytes: int = 0
+    free_disk_bytes: int = 0
+    budget_usage_pct: float = 0.0
+    free_disk_gb: float = 0.0
+    alert_level: str = "NORMAL"  # "NORMAL", "WARNING", "CRITICAL", "HALT"
+    vod_proxies_count: int = 0
+    shorts_count: int = 0
+
+
+class ArchivalTranscodeResult(BaseModel):
+    source_path: str
+    proxy_path: str
+    original_size_bytes: int
+    proxy_size_bytes: int
+    reduction_pct: float
+    duration_sec: float
+    resolution: str
+    success: bool = True
+    error_message: Optional[str] = None
+
+
+# --- Spec 33: Commercial Intelligence: Sponsor Audits & Creator Studio ---
+
+class SponsorContractTerms(BaseModel):
+    brand_name: str
+    mandatory_keywords: List[str] = Field(default_factory=list)
+    promo_code: Optional[str] = None
+    contracted_duration_sec: float = 60.0
+    expected_logo_presence_sec: float = 30.0
+
+
+class SponsorAuditReport(BaseModel):
+    audit_id: str = Field(default_factory=lambda: f"audit-{uuid.uuid4().hex[:8]}")
+    brand_name: str
+    airtime_start_sec: float = 0.0
+    airtime_end_sec: float = 0.0
+    total_airtime_sec: float = 0.0
+    logo_exposure_sec: float = 0.0
+    talking_points_compliance_pct: float = 100.0
+    promo_code_mentioned: bool = True
+    chat_positive_sentiment_pct: float = 0.0
+    chat_purchase_intent_count: int = 0
+    earned_media_value_usd: float = 0.0
+    executive_summary: str = ""
+    compliance_passed: bool = True
+
+
+class YouTubeMetadataPackage(BaseModel):
+    suggested_titles: List[str] = Field(default_factory=list)
+    chapters: List[Dict[str, str]] = Field(default_factory=list)
+    seo_description: str = ""
+    seo_tags: List[str] = Field(default_factory=list)
+    thumbnail_candidate_timestamps: List[float] = Field(default_factory=list)
+    daily_recap_bullets: List[str] = Field(default_factory=list)
+
+
+class BrandSafetyAlert(BaseModel):
+    timestamp_sec: float
+    risk_type: str  # "ocr_leak", "dmca_risk", "tos_flag"
+    description: str
+    severity: str = "warning"  # "warning", "critical"
+    redaction_recommended: bool = True
+
 
 

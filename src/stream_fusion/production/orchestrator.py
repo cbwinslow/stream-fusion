@@ -11,6 +11,7 @@ from stream_fusion.models.schemas import (
     AuditStatus,
     AudioSegment,
     ChatMessage,
+    DynamicMomentThresholds,
     FusionSlice,
     ShortCandidate,
     ShortProductionPackage,
@@ -57,10 +58,12 @@ class ShortProductionOrchestrator:
         claims: Optional[List[StreamerClaim]] = None,
         sponsor_segments: Optional[List[SponsorSegment]] = None,
         adaptive_terms: Optional[List[AdaptiveTermEntry]] = None,
-        top_k: int = 3,
+        top_k: Optional[int] = 3,
         min_highlight_score: float = 0.4,
         allow_flagged: bool = True,
         dry_run: bool = False,
+        dynamic: bool = False,
+        thresholds: Optional[DynamicMomentThresholds] = None,
     ) -> List[tuple[ShortProductionPackage, StreamFusionEnvelope[ShortProductionPackage]]]:
         """Runs the multi-agent production committee end-to-end."""
         output_dir = Path(output_dir)
@@ -74,6 +77,8 @@ class ShortProductionOrchestrator:
             chat_messages=chat_messages,
             top_k=top_k,
             min_highlight_score=min_highlight_score,
+            dynamic=dynamic,
+            thresholds=thresholds,
         )
 
         packages: List[tuple[ShortProductionPackage, StreamFusionEnvelope[ShortProductionPackage]]] = []

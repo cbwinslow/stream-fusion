@@ -40,6 +40,7 @@ from stream_fusion.knowledge.web_grounding import LiveWebGroundingEngine
 from stream_fusion.models.schemas import (
     AudioSegment,
     ChatMessage,
+    DynamicMomentThresholds,
     FullSpectrumConfig,
     FullSpectrumManifest,
     StageExecutionStatus,
@@ -51,6 +52,9 @@ from stream_fusion.nlp.adaptive_slang import AdaptiveLexiconStore, AdaptiveSlang
 from stream_fusion.orchestration.manifest import FullSpectrumManifestBuilder
 from stream_fusion.production.orchestrator import ShortProductionOrchestrator
 from stream_fusion.schema.envelope import StreamEventType, StreamFusionEnvelope
+from stream_fusion.storage.archiver import VideoArchiver
+from stream_fusion.storage.gdrive import GoogleDriveOffloader
+from stream_fusion.storage.guardian import InsufficientStorageError, StorageGuardian
 from stream_fusion.vision.processor import VisionProcessor
 from stream_fusion.vision.optimizer import AdaptiveFrameOptimizer
 from stream_fusion.workers.bounded_buffer import BoundedFrameBuffer
@@ -91,6 +95,15 @@ class FullSpectrumPipeline:
         self.stance_tracker = TemporalStanceShiftTracker(storage_path=Path(self.config.stance_history_db))
         self.short_orchestrator = ShortProductionOrchestrator()
 
+        # Storage & Archival Engines (Spec 32)
+        self.storage_guardian = StorageGuardian(
+            storage_root=Path(self.base_config.storage.output_dir),
+            budget_gb=self.config.storage_budget_gb,
+            min_free_disk_gb=self.config.min_free_disk_gb,
+        )
+        self.video_archiver = VideoArchiver()
+        self.gdrive_offloader = GoogleDriveOffloader(root_folder_id=self.config.gdrive_root_folder_id)
+
     def run(
         self,
         media_input: Path,
@@ -110,6 +123,15 @@ class FullSpectrumPipeline:
         builder = FullSpectrumManifestBuilder(stream_id=stream_id, output_directory=out_dir)
 
         console.print(f"[bold purple]StreamFusion Full-Spectrum Pipeline[/bold purple]: {media_path.name}")
+
+        # Storage Guardian Pre-flight Check (Spec 32)
+        if self.config.enable_storage_guardian:
+            try:
+                self.storage_guardian.assert_can_allocate(required_gb=2.0, target_dir=out_dir)
+            except InsufficientStorageError as err:
+                logger.error("Storage pre-flight check failed: %s", err)
+                if self.config.storage_overflow_policy == "halt":
+                    raise err
 
         # -------------------------------------------------------------
         # Phase 1: Ingestion & Demuxing
@@ -444,6 +466,12 @@ class FullSpectrumPipeline:
             try:
                 console.print("[bold cyan][8/9][/bold cyan] Launching Autonomous Multi-Agent Short Studio...")
                 shorts_out_dir = out_dir / "shorts"
+                dynamic_thresholds = DynamicMomentThresholds(
+                    min_highlight_score=self.config.short_min_highlight_score,
+                    chat_burst_zscore=self.config.short_chat_burst_zscore,
+                    min_separation_sec=self.config.short_min_separation_sec,
+                    safety_max_shorts=self.config.short_safety_max,
+                )
                 packages_and_envs = self.short_orchestrator.produce_shorts(
                     analysis=analysis_result,
                     output_dir=shorts_out_dir,
@@ -456,6 +484,8 @@ class FullSpectrumPipeline:
                     sponsor_segments=sponsor_report.sponsor_segments if sponsor_report else None,
                     top_k=self.config.short_candidate_count,
                     dry_run=self.config.dry_run_shorts,
+                    dynamic=self.config.dynamic_shorts,
+                    thresholds=dynamic_thresholds,
                 )
                 short_packages = [pkg for pkg, _ in packages_and_envs]
                 builder.manifest.shorts_produced_count = len(short_packages)
@@ -471,6 +501,53 @@ class FullSpectrumPipeline:
                 builder.record_stage("phase_8_multi_agent_shorts", StageExecutionStatus.DEGRADED, time.time() - t0, error_message=str(ex))
         else:
             builder.record_stage("phase_8_multi_agent_shorts", StageExecutionStatus.SKIPPED, 0.0)
+
+        # -------------------------------------------------------------
+        # Ephemeral Asset Purging & Archival Video Compression (Spec 32)
+        # -------------------------------------------------------------
+        if self.config.enable_archival_compression:
+            try:
+                console.print("[bold cyan][Post-8][/bold cyan] Running Ephemeral Purge & Archival Video Transcoding...")
+                # 1. Purge ephemeral intermediate WAVs and keyframe images
+                ephemeral_targets = []
+                if wav_path and wav_path.exists():
+                    ephemeral_targets.append(wav_path)
+                if frames_dir and frames_dir.exists():
+                    ephemeral_targets.append(frames_dir)
+                self.video_archiver.purge_ephemeral_assets(ephemeral_targets)
+
+                # 2. Transcode 32GB source to compact reference proxy
+                proxy_path = out_dir / f"{stream_id}_proxy.mp4"
+                transcode_res = self.video_archiver.transcode_to_reference_proxy(
+                    source_video=media_path,
+                    output_proxy=proxy_path,
+                    target_height=self.config.archival_target_height,
+                    target_fps=self.config.archival_target_fps,
+                    video_bitrate_kbps=self.config.archival_video_bitrate_kbps,
+                    audio_bitrate_kbps=self.config.archival_audio_bitrate_kbps,
+                    replace_source=self.config.replace_source_after_transcode,
+                    dry_run=self.config.dry_run_shorts,
+                )
+                if transcode_res.success:
+                    builder.manifest.archival_proxy_path = str(proxy_path)
+                    builder.manifest.archival_reduction_pct = transcode_res.reduction_pct
+
+                # 3. Offsite Cloud Drive sync if enabled
+                if self.config.enable_gdrive_offload and proxy_path.exists():
+                    self.gdrive_offloader.upload_file(
+                        file_path=proxy_path,
+                        mock=True,
+                        purge_local_on_success=False,
+                    )
+            except Exception as ex:
+                logger.warning("Archival compression or ephemeral purge degraded: %s", ex)
+
+        # Record storage report in manifest
+        try:
+            storage_rep = self.storage_guardian.get_storage_report(target_dir=out_dir)
+            builder.manifest.storage_report = storage_rep.model_dump()
+        except Exception as ex:
+            logger.debug("Failed to record storage report: %s", ex)
 
         # -------------------------------------------------------------
         # Phase 9: Manifest Packaging & Event Bus Dispatch
