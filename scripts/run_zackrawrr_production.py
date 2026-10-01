@@ -121,32 +121,37 @@ def run_zackrawrr_pipeline():
     raw_chat = chat_analyzer.parse_twitch_downloader_json(chat_path)
     console.print(f"  [green]✓[/green] Parsed {len(raw_chat):,} chat messages ({time.time() - t0_chat:.1f}s)")
 
-    console.print("  Inserting batches into ClickHouse chat_events...")
-    t0_insert = time.time()
-    batch_size = 10000
-    total_inserted = 0
-    for i in range(0, len(raw_chat), batch_size):
-        chunk = raw_chat[i : i + batch_size]
-        events = [
-            {
-                "streamer_id": streamer_id,
-                "vod_id": vod_id,
-                "timestamp_ms": int((m.timestamp_offset or 0.0) * 1000),
-                "timestamp_sec": float(m.timestamp_offset or 0.0),
-                "chatter_username": m.author_name or "anonymous",
-                "message_text": m.content or "",
-                "emotes": m.emotes or [],
-                "sentiment_score": float(m.metadata.get("sentiment_score", 0.0) if m.metadata else 0.0),
-                "is_subscriber": 1 if m.metadata and m.metadata.get("is_subscriber") else 0,
-                "burst_flag": 1 if m.metadata and m.metadata.get("burst_flag") else 0,
-            }
-            for m in chunk
-        ]
-        inserted = ch_storage.insert_chat_events_batch(events)
-        total_inserted += inserted
+    existing_count = ch_storage.get_chat_events_count(vod_id=vod_id)
+    if existing_count > 0:
+        total_ch_count = existing_count
+        console.print(f"  [green]✓[/green] [CACHE HIT] Found {total_ch_count:,} chat events already in ClickHouse for VOD {vod_id}")
+    else:
+        console.print("  Inserting batches into ClickHouse chat_events...")
+        t0_insert = time.time()
+        batch_size = 10000
+        total_inserted = 0
+        for i in range(0, len(raw_chat), batch_size):
+            chunk = raw_chat[i : i + batch_size]
+            events = [
+                {
+                    "streamer_id": streamer_id,
+                    "vod_id": vod_id,
+                    "timestamp_ms": int((m.timestamp_offset or 0.0) * 1000),
+                    "timestamp_sec": float(m.timestamp_offset or 0.0),
+                    "chatter_username": m.author_name or "anonymous",
+                    "message_text": m.content or "",
+                    "emotes": m.emotes or [],
+                    "sentiment_score": float(m.metadata.get("sentiment_score", 0.0) if m.metadata else 0.0),
+                    "is_subscriber": 1 if m.metadata and m.metadata.get("is_subscriber") else 0,
+                    "burst_flag": 1 if m.metadata and m.metadata.get("burst_flag") else 0,
+                }
+                for m in chunk
+            ]
+            inserted = ch_storage.insert_chat_events_batch(events)
+            total_inserted += inserted
 
-    total_ch_count = ch_storage.get_chat_events_count(vod_id=vod_id)
-    console.print(f"  [green]✓[/green] Inserted {total_inserted:,} events into ClickHouse in {time.time() - t0_insert:.1f}s (Total in CH: {total_ch_count:,})")
+        total_ch_count = ch_storage.get_chat_events_count(vod_id=vod_id)
+        console.print(f"  [green]✓[/green] Inserted {total_inserted:,} events into ClickHouse in {time.time() - t0_insert:.1f}s (Total in CH: {total_ch_count:,})")
 
     # -------------------------------------------------------------------------
     # 3. Full-Spectrum Pipeline Execution

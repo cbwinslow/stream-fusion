@@ -259,77 +259,96 @@ class FullSpectrumPipeline:
         t0 = time.time()
         try:
             console.print("[bold cyan][3/9][/bold cyan] Parsing screen context & OCR with bounded buffering...")
-            if self.config.bounded_buffer:
-                buffer = BoundedFrameBuffer(demuxer=self.demuxer)
-                worker_mgr = WorkerIsolationManager() if self.config.isolate_gpu_workers else None
-                v_cfg = {
-                    "backend": "florence" if self.base_config.vision.device == "cuda" else "fallback",
-                    "device": self.base_config.vision.device,
-                    "detect_objects": self.base_config.vision.object_detection_enabled,
-                }
-
-                def _frame_callback(f_items, w_start, w_end):
-                    if worker_mgr:
-                        return worker_mgr.process_keyframes_isolated(f_items, config=v_cfg)
-                    else:
-                        vp = VisionProcessor(
-                            backend=v_cfg["backend"],
-                            device=v_cfg["device"],
-                            detect_objects=v_cfg["detect_objects"],
-                        )
-                        res = [
-                            vp.process_frame(Path(item["path"]), item["timestamp_sec"], item["frame_index"])
-                            for item in f_items
-                        ]
-                        vp.unload()
-                        return res
-
-                optimal_timestamps = None
-                if getattr(self.config, "sampling_mode", "fixed") == "adaptive":
-                    early_chat = []
-                    if chat_input and chat_input.exists():
-                        try:
-                            early_chat = self.chat_analyzer.parse_twitch_downloader_json(chat_input)
-                        except Exception:
-                            pass
-                    opt_cfg = VisionConfig(
-                        sampling_mode="adaptive",
-                        sample_interval_sec=self.config.sample_interval_sec,
-                        min_interval_sec=getattr(self.config, "min_interval_sec", 0.5),
-                        max_interval_sec=getattr(self.config, "max_interval_sec", 5.0),
-                        burst_window_sec=getattr(self.config, "burst_window_sec", 12.0),
-                    )
-                    optimizer = AdaptiveFrameOptimizer(config=opt_cfg)
-                    optimal_timestamps = optimizer.compute_optimal_timestamps(
-                        duration_sec=effective_duration,
-                        chat_messages=early_chat,
-                        audio_segments=audio_segments,
-                    )
-                    console.print(f"      [bold purple][OPTIMIZER][/bold purple] Computed {len(optimal_timestamps)} adaptive frame timestamps (vs ~{int(effective_duration / self.config.sample_interval_sec) + 1} fixed)")
-
-                keyframes = buffer.process_stream_windowed(
-                    media_path,
-                    total_duration_sec=effective_duration,
-                    sample_interval_sec=self.config.sample_interval_sec,
-                    window_size_sec=self.config.window_size_sec,
-                    frame_processor=_frame_callback,
-                    purge_on_complete=True,
-                    optimal_timestamps=optimal_timestamps,
-                )
-            else:
-                vp = VisionProcessor(
-                    backend="florence" if self.base_config.vision.device == "cuda" else "fallback",
-                    device=self.base_config.vision.device,
-                    detect_objects=self.base_config.vision.object_detection_enabled,
-                )
-                keyframes = []
+            keyframes_cache_file = out_dir / f"{stream_id}_keyframes.json"
+            keyframes = None
+            if keyframes_cache_file.exists():
                 try:
-                    for idx, f_path in enumerate(frames):
-                        t_sec = idx * self.config.sample_interval_sec
-                        kf = vp.process_frame(f_path, timestamp_sec=t_sec, frame_index=idx + 1)
-                        keyframes.append(kf)
-                finally:
-                    vp.unload()
+                    with open(keyframes_cache_file, "r", encoding="utf-8") as f:
+                        raw_data = json.load(f)
+                    keyframes = [VisualKeyframe.model_validate(item) for item in raw_data]
+                    console.print(f"      [green][CACHE HIT][/green] Loaded {len(keyframes)} keyframes from {keyframes_cache_file.name}")
+                except Exception as ex:
+                    logger.warning("Failed loading keyframes cache: %s", ex)
+                    keyframes = None
+
+            if keyframes is None:
+                if self.config.bounded_buffer:
+                    buffer = BoundedFrameBuffer(demuxer=self.demuxer)
+                    worker_mgr = WorkerIsolationManager() if self.config.isolate_gpu_workers else None
+                    v_cfg = {
+                        "backend": "florence" if self.base_config.vision.device == "cuda" else "fallback",
+                        "device": self.base_config.vision.device,
+                        "detect_objects": self.base_config.vision.object_detection_enabled,
+                    }
+
+                    def _frame_callback(f_items, w_start, w_end):
+                        if worker_mgr:
+                            return worker_mgr.process_keyframes_isolated(f_items, config=v_cfg)
+                        else:
+                            vp = VisionProcessor(
+                                backend=v_cfg["backend"],
+                                device=v_cfg["device"],
+                                detect_objects=v_cfg["detect_objects"],
+                            )
+                            res = [
+                                vp.process_frame(Path(item["path"]), item["timestamp_sec"], item["frame_index"])
+                                for item in f_items
+                            ]
+                            vp.unload()
+                            return res
+
+                    optimal_timestamps = None
+                    if getattr(self.config, "sampling_mode", "fixed") == "adaptive":
+                        early_chat = []
+                        if chat_input and chat_input.exists():
+                            try:
+                                early_chat = self.chat_analyzer.parse_twitch_downloader_json(chat_input)
+                            except Exception:
+                                pass
+                        opt_cfg = VisionConfig(
+                            sampling_mode="adaptive",
+                            sample_interval_sec=self.config.sample_interval_sec,
+                            min_interval_sec=getattr(self.config, "min_interval_sec", 0.5),
+                            max_interval_sec=getattr(self.config, "max_interval_sec", 5.0),
+                            burst_window_sec=getattr(self.config, "burst_window_sec", 12.0),
+                        )
+                        optimizer = AdaptiveFrameOptimizer(config=opt_cfg)
+                        optimal_timestamps = optimizer.compute_optimal_timestamps(
+                            duration_sec=effective_duration,
+                            chat_messages=early_chat,
+                            audio_segments=audio_segments,
+                        )
+                        console.print(f"      [bold purple][OPTIMIZER][/bold purple] Computed {len(optimal_timestamps)} adaptive frame timestamps (vs ~{int(effective_duration / self.config.sample_interval_sec) + 1} fixed)")
+
+                    keyframes = buffer.process_stream_windowed(
+                        media_path,
+                        total_duration_sec=effective_duration,
+                        sample_interval_sec=self.config.sample_interval_sec,
+                        window_size_sec=self.config.window_size_sec,
+                        frame_processor=_frame_callback,
+                        purge_on_complete=True,
+                        optimal_timestamps=optimal_timestamps,
+                    )
+                else:
+                    vp = VisionProcessor(
+                        backend="florence" if self.base_config.vision.device == "cuda" else "fallback",
+                        device=self.base_config.vision.device,
+                        detect_objects=self.base_config.vision.object_detection_enabled,
+                    )
+                    keyframes = []
+                    try:
+                        for idx, f_path in enumerate(frames):
+                            t_sec = idx * self.config.sample_interval_sec
+                            kf = vp.process_frame(f_path, timestamp_sec=t_sec, frame_index=idx + 1)
+                            keyframes.append(kf)
+                    finally:
+                        vp.unload()
+
+                try:
+                    with open(keyframes_cache_file, "w", encoding="utf-8") as f:
+                        json.dump([kf.model_dump() for kf in keyframes], f)
+                except Exception as ex:
+                    logger.warning("Failed writing keyframes cache: %s", ex)
 
             builder.record_stage(
                 "phase_3_vision_ocr",
