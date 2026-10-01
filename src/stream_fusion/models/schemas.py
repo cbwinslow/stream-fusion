@@ -803,7 +803,7 @@ class FullSpectrumConfig(BaseModel):
     # Spec 32: Storage Guardian & Archival Compression
     enable_storage_guardian: bool = True
     storage_budget_gb: float = 1500.0
-    min_free_disk_gb: float = 50.0
+    min_free_disk_gb: float = 5.0
     storage_overflow_policy: str = "halt"  # "halt" | "offload_gdrive" | "prune_oldest"
     enable_archival_compression: bool = True
     archival_target_height: int = 480

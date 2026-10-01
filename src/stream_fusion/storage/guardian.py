@@ -26,7 +26,7 @@ class StorageGuardian:
         self,
         storage_root: Path,
         budget_gb: float = 1500.0,
-        min_free_disk_gb: float = 50.0,
+        min_free_disk_gb: float = 5.0,
         warning_threshold: float = 0.80,
         critical_threshold: float = 0.90,
         overflow_policy: StorageOverflowPolicy = StorageOverflowPolicy.HALT,

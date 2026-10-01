@@ -27,7 +27,7 @@ from stream_fusion.cli import app
 
 @pytest.fixture
 def runner():
-    return CliRunner()
+    return CliRunner(env={"COLUMNS": "160"})
 
 
 def test_stream_fusion_envelope_serialization():

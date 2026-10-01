@@ -5,7 +5,7 @@ from typer.testing import CliRunner
 
 from stream_fusion.cli import app
 
-runner = CliRunner()
+runner = CliRunner(env={"COLUMNS": "160"})
 
 
 def test_cli_help():
